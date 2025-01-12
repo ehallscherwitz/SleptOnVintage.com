@@ -1,54 +1,6 @@
 
-const hoodies = [
-  {
-    name: "Top Heavy 00s Hoodie",
-    price: "$80",
-    size: "XL",
-    image: "photos/Hoodie3.jpg",
-    id: "0019",
-    available: "true"
-  },
-  {
-    name: "Nike 90s Bubble Logo Hoodie",
-    price: "$70",
-    size: "M",
-    image: "photos/Hoodie1.jpeg",
-    id: "0020",
-    available: "true"
-  },
-  {
-    name: "University of Florida Gators Hoodie",
-    size: "M",
-    price: "$20",
-    image: "photos/Hoodie5.jpg",
-    id: "0021",
-    available: "false"
-  },
-  {
-    name: "Purdue University Hoodie",
-    price: "$30",
-    size: "L",
-    image: "photos/Hoodie2.jpg",
-    id: "0022",
-    available: "false"
-  },
-  {
-    name: "Billabong 00s Embroidered Hoodie",
-    price: "$35",
-    size: "S",
-    image: "photos/Hoodie4.jpg",
-    id: "0023",
-    available: "true"
-  },
-  {
-    name: "American Eagle Hoodie",
-    price: "$20",
-    size: "M",
-    image: "photos/Hoodie6.jpg",
-    id: "0024",
-    available: "true"
-  }
-]
+
+const hoodies = products.filter(product => product.category === 'hoodies');
 
 const productsHTML = hoodies.map(
   (product) => `
@@ -64,7 +16,7 @@ const productsHTML = hoodies.map(
         <div class="product-button-row">
           ${
             product.available === "true"
-              ? `<button class="add-to-cart-btn" product="${product}" ">Add to Cart</button>`
+              ? `<button class="add-to-cart-btn" id="${product.id}" ">Add to Cart</button>`
               : `<button class="sold-out-btn">Sold Out</button>`
           }
         </div>
@@ -74,3 +26,9 @@ const productsHTML = hoodies.map(
 
 const result = document.querySelector(".product-grid");
 result.innerHTML = productsHTML.join("");
+
+document.addEventListener('click', (event) => {
+  if (event.target.classList.contains('add-to-cart-btn')) {
+    console.log('clicked');
+  }
+});
