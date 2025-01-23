@@ -1,14 +1,18 @@
 // Initialize cart from localStorage or create a new one
-let cart = JSON.parse(localStorage.getItem('cart')) || [];
+let cart = [];
 
 // Function to add a product to the cart
-function addToCart(productId) {
+/*function addToCart(productId) {
   const product = getProductById(productId);
   if (product) {
     cart.push(product);
-    localStorage.setItem('cart', JSON.stringify(cart));
     updateCartCounter();
   }
+}*/
+
+function addToCart(productId) {
+  cart.push(productId);
+  console.log(cart);
 }
 
 let cartCounter = 0;
@@ -27,7 +31,7 @@ function getProductById(productId) {
   return products.find(product => product.id === productId);
 }
 
-window.addToCart = addToCart;
+//window.addToCart = addToCart;
 
 // Call updateCartCounter on page load to display the correct quantity
 updateCartCounter();

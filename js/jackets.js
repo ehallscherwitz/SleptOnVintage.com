@@ -25,3 +25,9 @@ const productsHTML = jackets.map(
 
 const result = document.querySelector(".product-grid");
 result.innerHTML = productsHTML.join("");
+
+document.addEventListener('click', (event) => {
+  if (event.target.classList.contains('add-to-cart-btn')) {
+    addToCart(event.target.id);
+  }
+});

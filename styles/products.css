@@ -87,4 +87,6 @@
   border: solid;
   border-color: white;
   flex: .44;
+  cursor: pointer;
+  pointer-events: auto;
 }

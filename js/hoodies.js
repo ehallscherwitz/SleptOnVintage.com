@@ -18,7 +18,7 @@ const productsHTML = hoodies.map(
             product.available === "true"
               ? `<button class="add-to-cart-btn" id="${product.id}" ">Add to Cart</button>`
               : `<button class="sold-out-btn">Sold Out</button>`
-          }
+          }  
         </div>
       </div>
   `
@@ -29,6 +29,6 @@ result.innerHTML = productsHTML.join("");
 
 document.addEventListener('click', (event) => {
   if (event.target.classList.contains('add-to-cart-btn')) {
-    console.log('clicked');
+    addToCart(event.target.id);
   }
 });
