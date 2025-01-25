@@ -45,4 +45,5 @@ function resetCart() {
   updateCartCounter();
 }
 
-resetCart();
+updateCartCounter();
+

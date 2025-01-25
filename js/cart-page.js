@@ -1,7 +1,11 @@
+//const cartProducts = products.filter(product => product.category === 'hoodies');
 
-const hoodies = products.filter(product => product.category === 'hoodies');
+const cartProducts = cart.map(cartItem => {
+  const product = products.find(product => product.id === cartItem.id);
+  return { ...product, quantity: cartItem.quantity };
+});
 
-const productsHTML = hoodies.map(
+const productsHTML = cartProducts.map(
   (product) => `
       <div class="product">
         <div class="thumbnail-row">
@@ -25,4 +29,3 @@ const productsHTML = hoodies.map(
 
 const result = document.querySelector(".product-grid");
 result.innerHTML = productsHTML.join("");
-
