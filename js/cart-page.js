@@ -1,5 +1,5 @@
 //const cartProducts = products.filter(product => product.category === 'hoodies');
-
+/*
 const cartProducts = cart.map(cartItem => {
   const product = products.find(product => product.id === cartItem.id);
   return { ...product, quantity: cartItem.quantity };
@@ -29,3 +29,4 @@ const productsHTML = cartProducts.map(
 
 const result = document.querySelector(".product-grid");
 result.innerHTML = productsHTML.join("");
+*/
