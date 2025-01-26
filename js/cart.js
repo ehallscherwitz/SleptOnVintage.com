@@ -45,5 +45,17 @@ function resetCart() {
   updateCartCounter();
 }
 
+// Function to remove an item from the cart
+function removeFromCart(productId) {
+  const productIndex = cart.findIndex(item => item.id === productId);
+  if (productIndex > -1) {
+    cart.splice(productIndex, 1);
+    localStorage.setItem('cart', JSON.stringify(cart));
+    updateCartCounter();
+  }
+}
+
+
+
 updateCartCounter();
 
