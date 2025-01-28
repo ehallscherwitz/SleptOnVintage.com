@@ -9,7 +9,7 @@ const productsHTML = shirts.map(
         <div class="product-info-row">
           <div class="product-title">${product.name}</div>
           <div class="product-size">(${product.size})</div>
-          <div class="product-price">${product.price}</div>
+          <div class="product-price">$${product.price}</div>
         </div>
         <div class="product-button-row">
           ${

@@ -18,7 +18,7 @@ function renderpage() {
               <div class="product-title">${product.name}</div>
               <div class="product-size">(${product.size})</div>
             </div>
-            <div class="product-price">${product.price}</div>
+            <div class="product-price">$${product.price}</div>
             <div class="remove-button-container">
               <button class="remove-button" id="${product.id}">Remove</button>
             </div>

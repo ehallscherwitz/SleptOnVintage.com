@@ -1,6 +1,6 @@
 .cart-grid {
-  margin-left: 200px;
-  margin-right: 200px;
+  margin-left: auto;
+  margin-right: auto;
   max-width: 1200px;
 }
 
@@ -10,6 +10,9 @@
   padding-bottom: 30px;
   border-bottom: solid;
   border-color: white;
+  justify-content: center;
+  align-items: center;
+  min-width: 400px;
 }
 
 .cart-grid-product, .cart-grid-price {
@@ -18,10 +21,12 @@
   align-items: center;
   justify-content: center;
   font-weight: bold;
+  min-width:  100px;
 }
 
 .filler-div{
   flex: 1;
+  min-width: 100px;
 }
 
 .cart-grid-product {
@@ -30,11 +35,6 @@
 
 .cart-grid-price {
   justify-content: center;
-}
-
-.product-grid{
-
-
 }
 
 .product{
@@ -51,15 +51,15 @@
 .thumbnail-container{
   flex: 1;
   display: flex;
+  min-width: 100px;
+  
 }
 
 .cart-thumbnail {
   flex: 1;
-  width: 100px;
-  padding: 40px;
+  padding: 30px;
   display: block;
-  border-radius: 60px;
-  
+  width: 20px;
 }
 
 .product-info {
@@ -68,14 +68,19 @@
   flex-direction: row;
   align-items: center;
   justify-content: center;
+  min-width: 100px;
+  
 }
 
 .product-title, .product-size {
   display: flex;
   font-weight: bold;
-  flex: 2;
+  flex: 4;
   align-items: center;
   justify-content: left;
+}
+
+.product-title {
   padding-right: 20px;
 }
 
@@ -90,6 +95,8 @@
   align-items: center;
   justify-content: center;
   font-weight: bold;
+  min-width: 100px;
+  
 }
 
 .remove-button-container {
@@ -98,6 +105,8 @@
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
+  min-width: 100px;
+  
 }
 
 .remove-button {
@@ -126,12 +135,40 @@
     font-size: 12px;
   }
 
+  .remove-button {
+    width: 60px;
+    border-radius: 8px;
+    text-underline-offset: 3px;
+  }
+
+  .product-title {
+    padding-right: 15px;
+  }
+
+  .cart-thumbnail {
+    padding: 20px;
+  }
+
   
 }
 
 @media (max-width: 550px) {
-  .product-grid {
-    grid-template-columns: 1fr;
+  .product-title, .product-size, .product-price, .remove-button {
+    font-size: 8px;
+  }
+
+  .product-title {
+    padding-right: 10px;
+  }
+
+  .remove-button {
+    width: 40px;
+    border-radius: 5px;
+    text-underline-offset: 2px;
+  }
+
+  .cart-thumbnail {
+    padding: 10px;
   }
 }
 
