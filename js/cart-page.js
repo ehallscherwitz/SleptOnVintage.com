@@ -34,6 +34,8 @@ function renderpage() {
     document.querySelector(".cart-grid-title-row").innerHTML = '';
   }
 
+  document.querySelector(".cart-total-text").innerHTML = `Total: $${cartProducts.reduce((acc, product) => acc + product.price, 0)}`
+
 }
 
 renderpage();

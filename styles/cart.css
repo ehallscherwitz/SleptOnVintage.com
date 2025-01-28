@@ -172,3 +172,13 @@
   }
 }
 
+.cart-total-text {
+  display: flex;
+  flex: 1;
+  font-weight: bold;
+  justify-content: right;
+  align-items: center;
+  padding-top: 30px;
+  padding-bottom: 30px;
+}
+
