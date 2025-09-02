@@ -13,32 +13,32 @@ const Homepage: React.FC = () => {
   const categories: Category[] = [
     {
       name: "Shirts",
-      image: "/photos/Shirt1.jpg",
+      image: "https://ogvzymvmzhhfccgpjjaf.supabase.co/storage/v1/object/public/product-images/Shirt1.jpg",
       path: "/shirts"
     },
     {
       name: "Sweaters", 
-      image: "/photos/Sweater1.jpeg",
+      image: "https://ogvzymvmzhhfccgpjjaf.supabase.co/storage/v1/object/public/product-images/Sweater1.jpeg",
       path: "/sweaters"
     },
     {
       name: "Hoodies",
-      image: "/photos/Hoodie1.jpeg", 
+      image: "https://ogvzymvmzhhfccgpjjaf.supabase.co/storage/v1/object/public/product-images/Hoodie1.jpeg", 
       path: "/hoodies"
     },
     {
       name: "Jackets",
-      image: "/photos/Jacket1.jpeg",
+      image: "https://ogvzymvmzhhfccgpjjaf.supabase.co/storage/v1/object/public/product-images/Jacket1.jpeg",
       path: "/jackets"
     },
     {
       name: "Pants",
-      image: "/photos/Pants1.jpeg",
+      image: "https://ogvzymvmzhhfccgpjjaf.supabase.co/storage/v1/object/public/product-images/Pants1.jpeg",
       path: "/pants"
     },
     {
       name: "Shorts",
-      image: "/photos/Shorts1.jpg",
+      image: "https://ogvzymvmzhhfccgpjjaf.supabase.co/storage/v1/object/public/product-images/Shorts1.jpg",
       path: "/shorts"
     }
   ];
