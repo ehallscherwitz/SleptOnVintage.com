@@ -1,0 +1,42 @@
+/* Reset default Vite styles - but preserve header spacing */
+* {
+  box-sizing: border-box;
+}
+
+/* Reset specific elements that conflict with our design */
+html, body, #root {
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  height: 100%;
+}
+
+body {
+  font-family: Inter, Arial;
+  color: white;
+  background-color: black;
+  font-size: 16px;
+  height: 1000px;
+  margin: 0;
+  padding: 0;
+  display: block;
+  place-items: unset;
+  min-width: unset;
+  min-height: unset;
+}
+
+#root {
+  margin: 0;
+  padding: 0;
+  max-width: unset;
+  text-align: unset;
+}
+
+p{
+  font-family: Inter, Arial;
+  color: white;
+  background-color: black;
+  font-size: 16px;
+}

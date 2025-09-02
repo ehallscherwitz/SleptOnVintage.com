@@ -15,7 +15,7 @@ const productsHTML = hoodies.map(
         <div class="product-button-row">
           ${
             product.available === "true"
-              ? `<button class="add-to-cart-btn" id="${product.id}" ">Add to Cart</button>`
+              ? `<button class="add-to-cart-btn" id="${product.id}">Add to Cart</button>`
               : `<button class="sold-out-btn">Sold Out</button>`
           }  
         </div>

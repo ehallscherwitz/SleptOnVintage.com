@@ -317,3 +317,6 @@ const products = [
     category: "shorts"
   }
 ]
+
+// Store products in localStorage so cart.js can access them
+localStorage.setItem('products', JSON.stringify(products));
