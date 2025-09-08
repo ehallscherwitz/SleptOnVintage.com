@@ -1,23 +1,54 @@
 // CartPage component - converted from cart-page.html
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import { useCart } from '../context/CartContext';
-import { products } from '../data/products';
+import { productService, type Product } from '../services/productService';
 
 const CartPage: React.FC = () => {
   const { cart, removeFromCart } = useCart();
+  const [cartProducts, setCartProducts] = useState<(Product & { quantity: number })[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Get full product details for cart items
-  const cartProducts = cart.map(cartItem => {
-    const product = products.find(product => product.id === cartItem.id);
-    return { ...product, quantity: cartItem.quantity };
-  }).filter(Boolean); // Remove any undefined products
+  useEffect(() => {
+    const fetchCartProducts = async () => {
+      try {
+        setLoading(true);
+        const products = await productService.getAllProducts();
+        
+        const cartProductsWithDetails = cart.map(cartItem => {
+          const product = products.find(product => product.id === cartItem.id);
+          return product ? { ...product, quantity: cartItem.quantity } : null;
+        }).filter(Boolean) as (Product & { quantity: number })[];
+        
+        setCartProducts(cartProductsWithDetails);
+      } catch (error) {
+        console.error('Error fetching cart products:', error);
+        setCartProducts([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCartProducts();
+  }, [cart]);
 
   const total = cartProducts.reduce((acc, product) => acc + (product?.price || 0), 0);
 
-  const handleRemove = (productId: string) => {
+  const handleRemove = (productId: number) => {
     removeFromCart(productId);
   };
+
+  if (loading) {
+    return (
+      <div>
+        <Header />
+        <div className="subheader">Your Cart</div>
+        <div style={{ textAlign: 'center', padding: '2rem' }}>
+          Loading cart...
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -39,29 +70,27 @@ const CartPage: React.FC = () => {
             
             <div className="product-grid">
               {cartProducts.map(product => (
-                product && (
-                  <div key={product.id} className="product">
-                    <div className="thumbnail-container">
-                      <img className="cart-thumbnail" src={product.image} alt={product.name} />
-                    </div>
-                    
-                    <div className="product-info">
-                      <div className="product-title">{product.name}</div>
-                      <div className="product-size">({product.size})</div>
-                    </div>
-                    
-                    <div className="product-price">${product.price}</div>
-                    
-                    <div className="remove-button-container">
-                      <button 
-                        className="remove-button" 
-                        onClick={() => handleRemove(product.id)}
-                      >
-                        Remove
-                      </button>
-                    </div>
+                <div key={product.id} className="product">
+                  <div className="thumbnail-container">
+                    <img className="cart-thumbnail" src={product.image} alt={product.name} />
                   </div>
-                )
+                  
+                  <div className="product-info">
+                    <div className="product-title">{product.name}</div>
+                    <div className="product-size">({product.size})</div>
+                  </div>
+                  
+                  <div className="product-price">${product.price}</div>
+                  
+                  <div className="remove-button-container">
+                    <button 
+                      className="remove-button" 
+                      onClick={() => handleRemove(product.id)}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
               ))}
             </div>
             
