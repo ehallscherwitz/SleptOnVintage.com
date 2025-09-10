@@ -1,14 +1,30 @@
 // Header component - converted from vanilla HTML
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
+import AuthModal from './AuthModal';
 
 const Header: React.FC = () => {
   const { cartCount } = useCart();
+  const { user, signOut } = useAuth();
   const location = useLocation();
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState<'login'>('login');
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
   // Helper function to determine if current page matches the button
   const isCurrentPage = (path: string) => location.pathname === path;
+
+  const handleAuthClick = (mode: 'login') => {
+    setAuthMode(mode);
+    setShowAuthModal(true);
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    setShowUserMenu(false);
+  };
 
   return (
     <div className="header">
@@ -70,10 +86,52 @@ const Header: React.FC = () => {
           <div className="tooltip">Search</div>
         </button>
         
-        <button className="user-button">
-          <i className="fa-regular fa-user"></i>
-          <div className="tooltip">User</div>
-        </button>
+         {user ? (
+           <div className="user-menu">
+             <button 
+               className="user-button"
+               onClick={() => setShowUserMenu(!showUserMenu)}
+             >
+               <i className="fa-regular fa-user"></i>
+               <div className="tooltip">Account</div>
+             </button>
+             
+             {showUserMenu && (
+               <div className="user-menu-dropdown">
+                 <div className="user-menu-item">
+                   {user.user_metadata?.full_name || user.email}
+                 </div>
+                 <button className="user-menu-item" onClick={handleSignOut}>
+                   Sign Out
+                 </button>
+               </div>
+             )}
+           </div>
+         ) : (
+           <div className="user-menu">
+             <button 
+               className="user-button"
+               onClick={() => setShowUserMenu(!showUserMenu)}
+             >
+               <i className="fa-regular fa-user"></i>
+               <div className="tooltip">Account</div>
+             </button>
+             
+             {showUserMenu && (
+               <div className="user-menu-dropdown">
+                 <button 
+                   className="user-menu-item"
+                   onClick={() => {
+                     handleAuthClick('login');
+                     setShowUserMenu(false);
+                   }}
+                 >
+                   Sign In
+                 </button>
+               </div>
+             )}
+           </div>
+         )}
         
         <Link to="/cart">
           <button className="cart-button">
@@ -83,6 +141,12 @@ const Header: React.FC = () => {
           </button>
         </Link>
       </div>
+      
+      <AuthModal 
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        mode={authMode}
+      />
     </div>
   );
 };
