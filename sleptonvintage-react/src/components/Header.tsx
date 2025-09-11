@@ -10,14 +10,12 @@ const Header: React.FC = () => {
   const { user, signOut } = useAuth();
   const location = useLocation();
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [authMode, setAuthMode] = useState<'login'>('login');
   const [showUserMenu, setShowUserMenu] = useState(false);
 
   // Helper function to determine if current page matches the button
   const isCurrentPage = (path: string) => location.pathname === path;
 
-  const handleAuthClick = (mode: 'login') => {
-    setAuthMode(mode);
+  const handleAuthClick = () => {
     setShowAuthModal(true);
   };
 
@@ -122,7 +120,7 @@ const Header: React.FC = () => {
                  <button 
                    className="user-menu-item"
                    onClick={() => {
-                     handleAuthClick('login');
+                     handleAuthClick();
                      setShowUserMenu(false);
                    }}
                  >
@@ -145,7 +143,6 @@ const Header: React.FC = () => {
       <AuthModal 
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
-        mode={authMode}
       />
     </div>
   );

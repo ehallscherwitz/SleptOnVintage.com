@@ -8,10 +8,10 @@ interface ProductCardProps {
 }
 
 const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
-  const { addToCart } = useCart();
+  const { addToCart, loading } = useCart();
 
-  const handleAddToCart = () => {
-    addToCart(product.id);
+  const handleAddToCart = async () => {
+    await addToCart(product.id);
   };
 
   return (
@@ -35,8 +35,9 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           <button 
             className="add-to-cart-btn" 
             onClick={handleAddToCart}
+            disabled={loading}
           >
-            Add to Cart
+            {loading ? 'Adding...' : 'Add to Cart'}
           </button>
         ) : (
           <button className="sold-out-btn">

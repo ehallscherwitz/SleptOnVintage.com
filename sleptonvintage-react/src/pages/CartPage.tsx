@@ -6,7 +6,7 @@ import { productService, type Product } from '../services/productService';
 
 const CartPage: React.FC = () => {
   const { cart, removeFromCart } = useCart();
-  const [cartProducts, setCartProducts] = useState<(Product & { quantity: number })[]>([]);
+  const [cartProducts, setCartProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -16,9 +16,9 @@ const CartPage: React.FC = () => {
         const products = await productService.getAllProducts();
         
         const cartProductsWithDetails = cart.map(cartItem => {
-          const product = products.find(product => product.id === cartItem.id);
-          return product ? { ...product, quantity: cartItem.quantity } : null;
-        }).filter(Boolean) as (Product & { quantity: number })[];
+          const product = products.find(product => product.id === cartItem.product_id);
+          return product || null;
+        }).filter(Boolean) as Product[];
         
         setCartProducts(cartProductsWithDetails);
       } catch (error) {
@@ -34,8 +34,8 @@ const CartPage: React.FC = () => {
 
   const total = cartProducts.reduce((acc, product) => acc + (product?.price || 0), 0);
 
-  const handleRemove = (productId: number) => {
-    removeFromCart(productId);
+  const handleRemove = async (productId: number) => {
+    await removeFromCart(productId);
   };
 
   if (loading) {
