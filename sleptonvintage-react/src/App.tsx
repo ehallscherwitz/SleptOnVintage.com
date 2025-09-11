@@ -7,6 +7,7 @@ import { AuthProvider } from './context/AuthContext';
 import Homepage from './pages/Homepage';
 import CategoryPage from './pages/CategoryPage';
 import CartPage from './pages/CartPage';
+import ProductDetailPage from './pages/ProductDetailPage';
 import AuthCallback from './pages/AuthCallback';
 
 // Import styles (remove default Vite styles)
@@ -16,6 +17,7 @@ import './styles/categories.css';
 import './styles/products.css';
 import './styles/cart.css';
 import './styles/auth.css';
+import './styles/product-detail.css';
 
 function App() {
   return (
@@ -31,6 +33,7 @@ function App() {
               <Route path="/jackets" element={<CategoryPage category="jackets" title="Jackets" />} />
               <Route path="/pants" element={<CategoryPage category="pants" title="Pants" />} />
               <Route path="/shorts" element={<CategoryPage category="shorts" title="Shorts" />} />
+              <Route path="/product/:id" element={<ProductDetailPage />} />
               <Route path="/cart" element={<CartPage />} />
               <Route path="/auth/callback" element={<AuthCallback />} />
             </Routes>

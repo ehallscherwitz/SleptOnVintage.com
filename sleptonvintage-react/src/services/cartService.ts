@@ -15,7 +15,7 @@ export interface Cart {
   created_at: string;
   updated_at: string;
   items?: CartItem[];
-}
+}it
 
 export const cartService = {
   // Get or create user's cart
@@ -153,17 +153,22 @@ export const cartService = {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { data: [], error: { message: 'No authenticated user' } };
 
+    // First get the user's cart
+    const { data: cart } = await supabase
+      .from('carts')
+      .select('id')
+      .eq('user_id', user.id)
+      .single();
+
+    if (!cart) return { data: [], error: { message: 'Cart not found' } };
+
     const { data, error } = await supabase
       .from('cart_items')
       .select(`
         *,
         product:products(*)
       `)
-      .eq('cart_id', supabase
-        .from('carts')
-        .select('id')
-        .eq('user_id', user.id)
-      );
+      .eq('cart_id', cart.id);
 
     return { data: data || [], error };
   },

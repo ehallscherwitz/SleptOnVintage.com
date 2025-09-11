@@ -1,0 +1,255 @@
+/* Product Detail Page Styles */
+.product-detail-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.breadcrumb {
+  margin-bottom: 30px;
+  font-size: 14px;
+  color: #ccc;
+}
+
+.breadcrumb a {
+  color: #ccc;
+  text-decoration: none;
+}
+
+.breadcrumb a:hover {
+  color: white;
+  text-decoration: underline;
+}
+
+.breadcrumb span {
+  margin: 0 8px;
+}
+
+.product-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 60px;
+  align-items: start;
+}
+
+.product-image-section {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.product-detail-image {
+  width: 100%;
+  max-width: 500px;
+  height: auto;
+  object-fit: cover;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.product-info-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.product-detail-title {
+  font-size: 32px;
+  font-weight: bold;
+  color: white;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.product-detail-price {
+  font-size: 28px;
+  font-weight: bold;
+  color: white;
+  margin: 0;
+}
+
+.product-detail-size,
+.product-detail-category {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  color: white;
+}
+
+.size-label,
+.category-label {
+  font-weight: 500;
+  color: #ccc;
+}
+
+.size-value,
+.category-value {
+  font-weight: 600;
+  color: white;
+}
+
+.product-detail-availability {
+  margin: 10px 0;
+}
+
+.availability-badge {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.availability-badge.available {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.availability-badge.unavailable {
+  background-color: #f44336;
+  color: white;
+}
+
+.product-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-top: 20px;
+}
+
+.add-to-cart-button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 15px 30px;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: Inter, Arial;
+}
+
+.add-to-cart-button:hover:not(.disabled) {
+  background-color: #0056b3;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+}
+
+.add-to-cart-button.disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.in-cart-button {
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  padding: 15px 30px;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: not-allowed;
+  font-family: Inter, Arial;
+}
+
+.in-cart-button:hover {
+  background-color: #45a049;
+}
+
+.back-to-category-button {
+  background-color: transparent;
+  color: white;
+  border: 2px solid white;
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: Inter, Arial;
+}
+
+.back-to-category-button:hover {
+  background-color: white;
+  color: black;
+}
+
+.back-button {
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  font-size: 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-top: 15px;
+  font-family: Inter, Arial;
+}
+
+.back-button:hover {
+  background-color: #5a6268;
+}
+
+.product-link {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+  transition: transform 0.2s ease;
+}
+
+.product-link:hover {
+  transform: translateY(-2px);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .product-detail-grid {
+    grid-template-columns: 1fr;
+    gap: 30px;
+  }
+  
+  .product-detail-title {
+    font-size: 24px;
+  }
+  
+  .product-detail-price {
+    font-size: 22px;
+  }
+  
+  .product-detail-image {
+    max-width: 100%;
+  }
+  
+  .product-actions {
+    gap: 12px;
+  }
+  
+  .add-to-cart-button,
+  .back-to-category-button {
+    padding: 12px 20px;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .product-detail-container {
+    padding: 15px;
+  }
+  
+  .product-detail-title {
+    font-size: 20px;
+  }
+  
+  .product-detail-price {
+    font-size: 18px;
+  }
+  
+  .breadcrumb {
+    font-size: 12px;
+  }
+}

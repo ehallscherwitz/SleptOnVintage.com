@@ -35,7 +35,13 @@ const CartPage: React.FC = () => {
   const total = cartProducts.reduce((acc, product) => acc + (product?.price || 0), 0);
 
   const handleRemove = async (productId: number) => {
-    await removeFromCart(productId);
+    console.log('Remove button clicked for product:', productId);
+    try {
+      await removeFromCart(productId);
+      console.log('Item removed successfully');
+    } catch (error) {
+      console.error('Error removing item:', error);
+    }
   };
 
   if (loading) {
@@ -86,6 +92,11 @@ const CartPage: React.FC = () => {
                     <button 
                       className="remove-button" 
                       onClick={() => handleRemove(product.id)}
+                      type="button"
+                      style={{ 
+                        pointerEvents: 'auto',
+                        userSelect: 'none'
+                      }}
                     >
                       Remove
                     </button>
