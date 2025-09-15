@@ -79,10 +79,12 @@ const Header: React.FC = () => {
       </div>
       
       <div className="header-right">
-        <button className="search-button">
-          <i className="fas fa-search"></i>
-          <div className="tooltip">Search</div>
-        </button>
+        <Link to="/search">
+          <button className="search-button">
+            <i className="fas fa-search"></i>
+            <div className="tooltip">Search</div>
+          </button>
+        </Link>
         
          {user ? (
            <div className="user-menu">

@@ -15,7 +15,7 @@ export interface Cart {
   created_at: string;
   updated_at: string;
   items?: CartItem[];
-}it
+}
 
 export const cartService = {
   // Get or create user's cart
