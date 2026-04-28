@@ -1,0 +1,20 @@
+# Cursor / IDE metadata
+.cursor/
+
+# Local dev / build
+node_modules/
+dist/
+
+# Secrets
+.env
+.env.*
+*.local
+
+# Database dumps / restore artifacts (do NOT commit)
+*.backup
+dump.no-roles.sql
+restore.log
+
+
+.vercel
+.env*.local
