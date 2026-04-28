@@ -1,7 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { checkoutService, type CheckoutCartItem, type CustomerInfo, type ShippingInfo } from '../services/checkoutService';
+
+declare global {
+  interface Window {
+    Square?: any;
+  }
+}
 
 export const CheckoutPage: React.FC = () => {
   const { cart, resetCart } = useCart();
@@ -9,6 +15,9 @@ export const CheckoutPage: React.FC = () => {
   const [cartItems, setCartItems] = useState<CheckoutCartItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [paymentReady, setPaymentReady] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
+  const cardRef = useRef<any>(null);
   
   // Form state
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo>({
@@ -26,6 +35,13 @@ export const CheckoutPage: React.FC = () => {
     zipCode: '',
     notes: ''
   });
+
+  const squareConfig = useMemo(() => {
+    const applicationId = import.meta.env.VITE_SQUARE_APPLICATION_ID as string | undefined;
+    const locationId = import.meta.env.VITE_SQUARE_LOCATION_ID as string | undefined;
+    const isSandbox = import.meta.env.DEV;
+    return { applicationId, locationId, isSandbox };
+  }, []);
 
   // Load cart items for checkout
   useEffect(() => {
@@ -50,6 +66,113 @@ export const CheckoutPage: React.FC = () => {
       loadCartItems();
     }
   }, [user]);
+
+  async function ensureSquareCardMounted() {
+    const { applicationId, locationId, isSandbox } = squareConfig;
+    if (!applicationId || !locationId) {
+      throw new Error('Missing Square config. Set VITE_SQUARE_APPLICATION_ID and VITE_SQUARE_LOCATION_ID in .env.local and restart dev server.');
+    }
+
+    if (cardRef.current) return;
+
+    if (!window.Square) {
+      await new Promise<void>((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = isSandbox
+          ? 'https://sandbox.web.squarecdn.com/v1/square.js'
+          : 'https://web.squarecdn.com/v1/square.js';
+        script.async = true;
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error('Failed to load Square Web Payments SDK.'));
+        document.head.appendChild(script);
+      });
+    }
+
+    const payments = await window.Square.payments(applicationId, locationId);
+    const card = await payments.card();
+    await card.attach('#card-container');
+    cardRef.current = card;
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+    async function init() {
+      try {
+        setPaymentStatus(null);
+        await ensureSquareCardMounted();
+        if (!cancelled) setPaymentReady(true);
+      } catch (e: any) {
+        if (!cancelled) {
+          setPaymentReady(false);
+          setPaymentStatus(e?.message ?? String(e));
+        }
+      }
+    }
+    init();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handlePayNow = async () => {
+    if (cartItems.length === 0) {
+      setError('No items in cart');
+      return;
+    }
+
+    const requiredFields = ['firstName', 'lastName', 'email', 'address1', 'city', 'state', 'zipCode'];
+    const missingFields = requiredFields.filter(field => {
+      if (field.includes('.')) {
+        const [parent, child] = field.split('.');
+        return !customerInfo[parent as keyof CustomerInfo] && !shippingInfo[child as keyof ShippingInfo];
+      }
+      return !customerInfo[field as keyof CustomerInfo] && !shippingInfo[field as keyof ShippingInfo];
+    });
+
+    if (missingFields.length > 0) {
+      setError(`Please fill in: ${missingFields.join(', ')}`);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setPaymentStatus(null);
+
+    try {
+      await ensureSquareCardMounted();
+
+      const { data: orderData, error: orderErr } = await checkoutService.createOrder(cartItems, customerInfo, shippingInfo);
+      if (orderErr) throw new Error(orderErr.message || 'Failed to create order');
+
+      const orderId = orderData?.order?.id;
+      if (!orderId) throw new Error('Square order ID missing from response.');
+
+      const tokenResult = await cardRef.current.tokenize();
+      if (tokenResult.status !== 'OK') {
+        throw new Error(tokenResult.errors?.[0]?.message || 'Card tokenize failed.');
+      }
+
+      const sourceId = tokenResult.token;
+      const { data: payData, error: payErr } = await checkoutService.processPayment(
+        sourceId,
+        orderId,
+        customerInfo.email,
+        shippingInfo,
+        shippingInfo
+      );
+      if (payErr) throw new Error(payErr.message || 'Payment failed');
+
+      setPaymentStatus(`✅ Payment ${payData?.payment?.status ?? 'completed'} (Order ${orderId})`);
+      await resetCart();
+      setCartItems([]);
+    } catch (err: any) {
+      setError(err?.message || 'Checkout failed');
+      console.error('Checkout error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleTestOrder = async () => {
     if (cartItems.length === 0) {
@@ -239,6 +362,32 @@ export const CheckoutPage: React.FC = () => {
           {error}
         </div>
       )}
+
+      {paymentStatus && (
+        <div className="error-message" style={{ color: paymentStatus.startsWith('✅') ? '#9ef6a7' : undefined }}>
+          {paymentStatus}
+        </div>
+      )}
+
+      {/* Payment */}
+      <div className="checkout-actions">
+        <h2>Payment</h2>
+        <div id="card-container" style={{ marginTop: 12, marginBottom: 12 }} />
+
+        {!paymentReady && (
+          <p className="test-note" style={{ opacity: 0.9 }}>
+            Loading payment form… {paymentStatus ? `(${paymentStatus})` : null}
+          </p>
+        )}
+
+        <button
+          onClick={handlePayNow}
+          disabled={loading || !paymentReady}
+          className="test-order-button"
+        >
+          {loading ? 'Processing…' : `Pay $${totals.total.toFixed(2)}`}
+        </button>
+      </div>
 
       {/* Test Order Button */}
       <div className="checkout-actions">
