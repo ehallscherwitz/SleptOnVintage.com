@@ -9,21 +9,31 @@ const AuthCallback: React.FC = () => {
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
-        const { data, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error('Auth callback error:', error);
-          navigate('/');
-          return;
+        // Two possible flows:
+        // - PKCE: provider redirects back with ?code=...
+        // - Implicit: provider redirects back with #access_token=... in the URL hash
+        const url = new URL(window.location.href);
+        const hasCode = url.searchParams.has('code');
+        const hasAccessToken = window.location.hash.includes('access_token=');
+
+        if (hasCode) {
+          const { error } = await supabase.auth.exchangeCodeForSession(url.href);
+          if (error) throw error;
+        } else if (hasAccessToken) {
+          const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+          const access_token = hash.get('access_token');
+          const refresh_token = hash.get('refresh_token');
+
+          if (access_token && refresh_token) {
+            const { error } = await supabase.auth.setSession({ access_token, refresh_token });
+            if (error) throw error;
+          } else {
+            throw new Error('Missing access_token/refresh_token in callback URL.');
+          }
         }
 
-        if (data.session) {
-          // User successfully authenticated
-          navigate('/');
-        } else {
-          // No session found
-          navigate('/');
-        }
+        // At this point, session should be stored if the callback was valid.
+        navigate('/');
       } catch (error) {
         console.error('Auth callback error:', error);
         navigate('/');

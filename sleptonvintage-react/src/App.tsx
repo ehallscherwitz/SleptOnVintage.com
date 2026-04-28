@@ -9,6 +9,7 @@ import CartPage from './pages/CartPage';
 import ProductDetailPage from './pages/ProductDetailPage';
 import SearchPage from './pages/SearchPage';
 import AuthCallback from './pages/AuthCallback';
+import CheckoutPage from './pages/CheckoutPage';
 
 // Import styles (remove default Vite styles)
 import './styles/general.css';
@@ -37,6 +38,7 @@ function App() {
               <Route path="/product/:id" element={<ProductDetailPage />} />
               <Route path="/search" element={<SearchPage />} />
               <Route path="/cart" element={<CartPage />} />
+              <Route path="/checkout" element={<CheckoutPage />} />
               <Route path="/auth/callback" element={<AuthCallback />} />
             </Routes>
           </div>

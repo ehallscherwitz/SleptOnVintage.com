@@ -1,5 +1,5 @@
 // Header component - converted from vanilla HTML
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
@@ -11,6 +11,20 @@ const Header: React.FC = () => {
   const location = useLocation();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [avatarFailed, setAvatarFailed] = useState(false);
+
+  const avatarUrl = useMemo(() => {
+    const u: any = user;
+    const raw =
+      u?.user_metadata?.avatar_url ??
+      u?.user_metadata?.picture ??
+      u?.user_metadata?.avatarUrl ??
+      u?.identities?.[0]?.identity_data?.avatar_url ??
+      u?.identities?.[0]?.identity_data?.picture ??
+      null;
+
+    return typeof raw === 'string' && raw.trim().length > 0 ? raw : undefined;
+  }, [user]);
 
   // Helper function to determine if current page matches the button
   const isCurrentPage = (path: string) => location.pathname === path;
@@ -92,7 +106,19 @@ const Header: React.FC = () => {
                className="user-button"
                onClick={() => setShowUserMenu(!showUserMenu)}
              >
-               <i className="fa-regular fa-user"></i>
+               {avatarUrl && !avatarFailed ? (
+                 <img
+                   className="user-avatar"
+                   src={avatarUrl}
+                   alt="Profile"
+                   loading="lazy"
+                   referrerPolicy="no-referrer"
+                   crossOrigin="anonymous"
+                   onError={() => setAvatarFailed(true)}
+                 />
+               ) : (
+                 <i className="fa-regular fa-user"></i>
+               )}
                <div className="tooltip">Account</div>
              </button>
              
