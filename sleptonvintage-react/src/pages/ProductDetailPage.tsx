@@ -4,6 +4,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import Header from '../components/Header';
 import { productService, type Product } from '../services/productService';
 import { useCart } from '../context/CartContext';
+import { formatUsdFromCents } from '../utils/money';
 
 const ProductDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -123,7 +124,7 @@ const ProductDetailPage: React.FC = () => {
           <div className="product-info-section">
             <h1 className="product-detail-title">{product.name}</h1>
             
-            <div className="product-detail-price">${product.price}</div>
+            <div className="product-detail-price">${formatUsdFromCents(product.price)}</div>
             
             <div className="product-detail-size">
               <span className="size-label">Size: </span>

@@ -3,6 +3,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import type { Product } from '../services/productService';
+import { formatUsdFromCents } from '../utils/money';
 
 interface ProductCardProps {
   product: Product;
@@ -44,7 +45,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         <div className="product-info-row">
           <div className="product-title">{product.name}</div>
           <div className="product-size">({product.size})</div>
-          <div className="product-price">${product.price}</div>
+          <div className="product-price">${formatUsdFromCents(product.price)}</div>
         </div>
       </Link>
       

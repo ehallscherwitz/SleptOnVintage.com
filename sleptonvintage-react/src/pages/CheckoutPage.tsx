@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { checkoutService, type CheckoutCartItem, type CustomerInfo, type ShippingInfo } from '../services/checkoutService';
+import { formatUsdFromCents } from '../utils/money';
 
 declare global {
   interface Window {
@@ -10,7 +11,7 @@ declare global {
 }
 
 export const CheckoutPage: React.FC = () => {
-  const { cart, resetCart } = useCart();
+  const { resetCart } = useCart();
   const { user } = useAuth();
   const [cartItems, setCartItems] = useState<CheckoutCartItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -39,7 +40,8 @@ export const CheckoutPage: React.FC = () => {
   const squareConfig = useMemo(() => {
     const applicationId = import.meta.env.VITE_SQUARE_APPLICATION_ID as string | undefined;
     const locationId = import.meta.env.VITE_SQUARE_LOCATION_ID as string | undefined;
-    const isSandbox = import.meta.env.DEV;
+    const env = (import.meta.env.VITE_SQUARE_ENV as string | undefined)?.toLowerCase();
+    const isSandbox = env ? env === 'sandbox' : Boolean(applicationId?.startsWith('sandbox-'));
     return { applicationId, locationId, isSandbox };
   }, []);
 
@@ -260,22 +262,22 @@ export const CheckoutPage: React.FC = () => {
           <div key={item.id} className="cart-item">
             <div className="item-details">
               <h4>{item.product.name}</h4>
-              <p>Size: {item.product.size} | ${item.product.price}</p>
+              <p>Size: {item.product.size} | ${formatUsdFromCents(item.product.price)}</p>
             </div>
           </div>
         ))}
         <div className="totals">
           <div className="total-line">
             <span>Subtotal:</span>
-            <span>${totals.subtotal.toFixed(2)}</span>
+            <span>${formatUsdFromCents(totals.subtotal)}</span>
           </div>
           <div className="total-line">
             <span>Tax (8.5%):</span>
-            <span>${totals.tax.toFixed(2)}</span>
+            <span>${formatUsdFromCents(totals.tax)}</span>
           </div>
           <div className="total-line total">
             <span>Total:</span>
-            <span>${totals.total.toFixed(2)}</span>
+            <span>${formatUsdFromCents(totals.total)}</span>
           </div>
         </div>
       </div>
@@ -385,7 +387,7 @@ export const CheckoutPage: React.FC = () => {
           disabled={loading || !paymentReady}
           className="test-order-button"
         >
-          {loading ? 'Processing…' : `Pay $${totals.total.toFixed(2)}`}
+          {loading ? 'Processing…' : `Pay $${formatUsdFromCents(totals.total)}`}
         </button>
       </div>
 

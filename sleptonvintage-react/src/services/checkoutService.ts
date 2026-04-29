@@ -7,6 +7,7 @@ export interface CheckoutCartItem {
   product: {
     id: number;
     name: string;
+    // stored in cents
     price: number;
     size: string;
     image: string;
@@ -31,6 +32,28 @@ export interface ShippingInfo {
 }
 
 export const checkoutService = {
+  async parseResponse(response: Response): Promise<{ ok: boolean; data: any; errorMessage?: string }> {
+    const text = await response.text();
+    let json: any = null;
+    try {
+      json = text ? JSON.parse(text) : null;
+    } catch {
+      json = null;
+    }
+
+    if (!response.ok) {
+      const msg =
+        json?.error ||
+        json?.message ||
+        (typeof json === 'string' ? json : null) ||
+        text ||
+        `Request failed with status ${response.status}`;
+      return { ok: false, data: json, errorMessage: msg };
+    }
+
+    return { ok: true, data: json ?? text };
+  },
+
   // Get cart items with product details for checkout
   async getCartItemsForCheckout(): Promise<{ data: CheckoutCartItem[]; error: any }> {
     const { data: { user } } = await supabase.auth.getUser();
@@ -68,7 +91,19 @@ export const checkoutService = {
         return { data: [], error };
       }
 
-      return { data: cartItems || [], error: null };
+      // PostgREST may return the joined `products(...)` selection as an array.
+      // Normalize it to a single object for the UI + Square order creation.
+      const normalized: CheckoutCartItem[] = (cartItems || []).map((row: any) => {
+        const productRaw = row.product;
+        const product = Array.isArray(productRaw) ? productRaw[0] : productRaw;
+        return {
+          id: row.id,
+          product_id: row.product_id,
+          product,
+        };
+      }).filter((row: any) => row.product);
+
+      return { data: normalized, error: null };
     } catch (err) {
       console.error('Checkout service error:', err);
       return { data: [], error: err };
@@ -90,13 +125,9 @@ export const checkoutService = {
         })
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        return { data: null, error: { message: data.error || 'Failed to create order' } };
-      }
-
-      return { data, error: null };
+      const parsed = await this.parseResponse(response);
+      if (!parsed.ok) return { data: null, error: { message: parsed.errorMessage || 'Failed to create order' } };
+      return { data: parsed.data, error: null };
     } catch (err) {
       console.error('Error creating order:', err);
       return { data: null, error: err };
@@ -106,10 +137,14 @@ export const checkoutService = {
   // Process payment via Square API
   async processPayment(sourceId: string, orderId: string, buyerEmail: string, shippingAddress: ShippingInfo, billingAddress?: ShippingInfo): Promise<{ data: any; error: any }> {
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+
       const response = await fetch('/api/payments/create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         },
         body: JSON.stringify({
           sourceId,
@@ -120,13 +155,9 @@ export const checkoutService = {
         })
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        return { data: null, error: { message: data.error || 'Failed to process payment' } };
-      }
-
-      return { data, error: null };
+      const parsed = await this.parseResponse(response);
+      if (!parsed.ok) return { data: null, error: { message: parsed.errorMessage || 'Failed to process payment' } };
+      return { data: parsed.data, error: null };
     } catch (err) {
       console.error('Error processing payment:', err);
       return { data: null, error: err };
@@ -137,13 +168,13 @@ export const checkoutService = {
   calculateTotals(cartItems: CheckoutCartItem[]): { subtotal: number; tax: number; total: number } {
     const subtotal = cartItems.reduce((sum, item) => sum + item.product.price, 0);
     const taxRate = 0.085; // 8.5% tax rate
-    const tax = subtotal * taxRate;
+    const tax = Math.round(subtotal * taxRate);
     const total = subtotal + tax;
 
     return {
-      subtotal: Math.round(subtotal * 100) / 100,
-      tax: Math.round(tax * 100) / 100,
-      total: Math.round(total * 100) / 100
+      subtotal,
+      tax,
+      total
     };
   }
 };

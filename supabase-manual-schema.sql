@@ -10,7 +10,8 @@ create extension if not exists "pgcrypto";
 create table if not exists public.products (
   id bigserial primary key,
   name text not null,
-  price numeric(10,2) not null check (price >= 0),
+  -- money is stored in cents (integers) but we keep column name `price`
+  price bigint not null check (price >= 0),
   size text not null,
   image text,
   category text not null,

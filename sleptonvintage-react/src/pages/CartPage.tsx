@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import { useCart } from '../context/CartContext';
 import { productService, type Product } from '../services/productService';
+import { formatUsdFromCents } from '../utils/money';
 
 const CartPage: React.FC = () => {
   const { cart, removeFromCart } = useCart();
@@ -86,7 +87,7 @@ const CartPage: React.FC = () => {
                     <div className="product-size">({product.size})</div>
                   </div>
                   
-                  <div className="product-price">${product.price}</div>
+                  <div className="product-price">${formatUsdFromCents(product.price)}</div>
                   
                   <div className="remove-button-container">
                     <button 
@@ -105,7 +106,7 @@ const CartPage: React.FC = () => {
               ))}
             </div>
             
-            <div className="cart-total-text">Total: ${total.toFixed(2)}</div>
+            <div className="cart-total-text">Total: ${formatUsdFromCents(total)}</div>
           </div>
         </>
       )}

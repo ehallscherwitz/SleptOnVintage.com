@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import Header from '../components/Header';
 import { useCart } from '../context/CartContext';
 import { productService, type Product } from '../services/productService';
+import { formatUsdFromCents } from '../utils/money';
 
 interface CategoryPageProps {
   category: Product['category'];
@@ -74,7 +75,7 @@ const CategoryPage: React.FC<CategoryPageProps> = ({ category, title }) => {
               </div>
               <div className="category-info-row">
                 <div className="category-title" style={{ fontSize: '14px' }}>
-                  {product.name} ({product.size}) ${product.price}
+                  {product.name} ({product.size}) ${formatUsdFromCents(product.price)}
                 </div>
               </div>
             </Link>

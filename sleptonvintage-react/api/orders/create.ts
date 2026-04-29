@@ -1,18 +1,34 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { Client, Environment } from 'squareup';
+import { SquareClient, SquareEnvironment } from 'square';
 
-// Initialize Square client
-const client = new Client({
-  accessToken: process.env.SQUARE_ACCESS_TOKEN!,
-  environment: process.env.NODE_ENV === 'production' ? Environment.Production : Environment.Sandbox,
-});
+function getSquareEnvironment() {
+  const env = (process.env.SQUARE_ENV || '').toLowerCase();
+  if (env === 'sandbox') return SquareEnvironment.Sandbox;
+  if (env === 'production') return SquareEnvironment.Production;
+  return process.env.NODE_ENV === 'production' ? SquareEnvironment.Production : SquareEnvironment.Sandbox;
+}
+
+function getSquareClient() {
+  // Construct client at request-time so missing/invalid env vars don't crash the function at import time.
+  return new SquareClient({
+    token: process.env.SQUARE_ACCESS_TOKEN!,
+    environment: getSquareEnvironment(),
+  });
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method === 'GET') return res.status(200).json({ ok: true });
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
+    if (!process.env.SQUARE_ACCESS_TOKEN) {
+      return res.status(500).json({ error: 'Missing SQUARE_ACCESS_TOKEN env var on server.' });
+    }
+    if (!process.env.SQUARE_LOCATION_ID) {
+      return res.status(500).json({ error: 'Missing SQUARE_LOCATION_ID env var on server.' });
+    }
+
     const { cartItems, customerInfo, shippingInfo } = req.body;
 
     // Validate required fields
@@ -59,27 +75,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return {
         name: `${product.name} - Size ${product.size}`,
         quantity: '1', // Always 1 for unique items
-        itemType: 'ITEM',
         basePriceMoney: {
-          amount: Math.round(product.price * 100), // Convert to cents
-          currency: 'USD'
+          amount: BigInt(product.price), // already cents
+          currency: 'USD' as const
         },
         note: `Product ID: ${product.id} | Category: ${product.category}`
       };
     });
 
     // Calculate total amount
-    const subtotal = cartItems.reduce((sum: number, cartItem: any) => {
-      return sum + cartItem.product.price;
-    }, 0);
+    const subtotal = cartItems.reduce((sum: number, cartItem: any) => sum + cartItem.product.price, 0);
 
     // Calculate tax (8.5% - adjust as needed)
     const taxRate = 0.085;
-    const taxAmount = subtotal * taxRate;
+    const taxAmount = Math.round(subtotal * taxRate);
     const totalAmount = subtotal + taxAmount;
 
     // Create order
-    const ordersApi = client.ordersApi;
+    const client = getSquareClient();
+    const ordersApi = client.orders;
     const orderRequest = {
       idempotencyKey: `order-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       order: {
@@ -89,7 +103,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           {
             name: 'Sales Tax',
             percentage: (taxRate * 100).toString(), // Convert to percentage string
-            scope: 'ORDER'
+            scope: 'ORDER' as const
           }
         ],
         pricingOptions: {
@@ -110,7 +124,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 locality: shippingInfo.city,
                 administrativeDistrictLevel1: shippingInfo.state,
                 postalCode: shippingInfo.zipCode,
-                country: 'US'
+                country: 'US' as const
               }
             },
             carrier: 'OTHER',
@@ -120,23 +134,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     };
 
-    const { result } = await ordersApi.createOrder(orderRequest);
+    const result = await ordersApi.create(orderRequest);
 
-    if (result.order) {
+    if (result?.order) {
       return res.status(200).json({
         success: true,
         order: {
           id: result.order.id,
           version: result.order.version,
           locationId: result.order.locationId,
-          lineItems: result.order.lineItems,
-          totalMoney: result.order.totalMoney,
           state: result.order.state
         },
         totals: {
-          subtotal: Math.round(subtotal * 100), // Return in cents
-          tax: Math.round(taxAmount * 100),
-          total: Math.round(totalAmount * 100)
+          subtotal,
+          tax: taxAmount,
+          total: totalAmount
         },
         customerInfo: {
           name: `${customerInfo.firstName} ${customerInfo.lastName}`,
@@ -146,7 +158,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     } else {
       return res.status(400).json({
         error: 'Order creation failed',
-        errors: result.errors
+        errors: result?.errors
       });
     }
 

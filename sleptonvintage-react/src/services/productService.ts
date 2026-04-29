@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 export interface Product {
   id: number;
   name: string;
+  // stored in cents
   price: number;
   size: string;
   image: string;

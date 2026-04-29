@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import Header from '../components/Header';
 import { useCart } from '../context/CartContext';
 import { productService, type Product } from '../services/productService';
+import { formatUsdFromCents } from '../utils/money';
 
 const SearchPage: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -181,7 +182,7 @@ const SearchPage: React.FC = () => {
                     </div>
                     <div className="category-info-row">
                       <div className="category-title" style={{ fontSize: '14px' }}>
-                        {product.name} ({product.size}) ${product.price}
+                        {product.name} ({product.size}) ${formatUsdFromCents(product.price)}
                       </div>
                     </div>
                   </Link>
