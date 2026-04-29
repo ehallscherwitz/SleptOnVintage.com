@@ -29,7 +29,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(500).json({ error: 'Missing SQUARE_LOCATION_ID env var on server.' });
     }
 
-    const { cartItems, customerInfo, shippingInfo } = req.body;
+    const { cartItems, customerInfo, shippingInfo, promoCode } = req.body;
 
     // Validate required fields
     if (!cartItems || !Array.isArray(cartItems) || cartItems.length === 0) {
@@ -64,32 +64,48 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // Create order items - each item has quantity 1 (unique items)
-    const orderItems = cartItems.map((cartItem: any) => {
+    const normalizedPromo = String(promoCode || '').trim().toUpperCase();
+    const promoApplied = normalizedPromo === 'SOV';
+    const promoRate = promoApplied ? 0.1 : 0;
+
+    const sourceProducts = cartItems.map((cartItem: any) => {
       const product = cartItem.product;
-      
       if (!product) {
         throw new Error(`Product not found for cart item ${cartItem.id}`);
       }
-
-      return {
-        name: `${product.name} - Size ${product.size}`,
-        quantity: '1', // Always 1 for unique items
-        basePriceMoney: {
-          amount: BigInt(product.price), // already cents
-          currency: 'USD' as const
-        },
-        note: `Product ID: ${product.id} | Category: ${product.category}`
-      };
+      return product;
     });
 
-    // Calculate total amount
-    const subtotal = cartItems.reduce((sum: number, cartItem: any) => sum + cartItem.product.price, 0);
+    const subtotal = sourceProducts.reduce((sum: number, p: any) => sum + p.price, 0);
+    const discountAmount = promoApplied ? Math.round(subtotal * promoRate) : 0;
+    const discountedSubtotal = Math.max(0, subtotal - discountAmount);
+
+    const adjustedPrices = sourceProducts.map((p: any) => p.price);
+    if (discountAmount > 0) {
+      let remaining = discountAmount;
+      for (let i = 0; i < adjustedPrices.length; i += 1) {
+        const itemsLeft = adjustedPrices.length - i;
+        const proposed = itemsLeft === 1 ? remaining : Math.floor(remaining / itemsLeft);
+        const deduction = Math.min(adjustedPrices[i], proposed);
+        adjustedPrices[i] -= deduction;
+        remaining -= deduction;
+      }
+    }
+
+    const orderItems = sourceProducts.map((product: any, idx: number) => ({
+      name: `${product.name} - Size ${product.size}`,
+      quantity: '1', // Always 1 for unique items
+      basePriceMoney: {
+        amount: BigInt(adjustedPrices[idx]), // already cents
+        currency: 'USD' as const
+      },
+      note: `Product ID: ${product.id} | Category: ${product.category}`
+    }));
 
     // Calculate tax (8.5% - adjust as needed)
     const taxRate = 0.085;
-    const taxAmount = Math.round(subtotal * taxRate);
-    const totalAmount = subtotal + taxAmount;
+    const taxAmount = Math.round(discountedSubtotal * taxRate);
+    const totalAmount = discountedSubtotal + taxAmount;
 
     // Create order
     const client = getSquareClient();
@@ -147,8 +163,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         },
         totals: {
           subtotal,
+          discount: discountAmount,
+          discountedSubtotal,
           tax: taxAmount,
           total: totalAmount
+        },
+        promo: {
+          code: promoApplied ? normalizedPromo : null,
+          discountRate: promoApplied ? promoRate : 0,
+          applied: promoApplied
         },
         customerInfo: {
           name: `${customerInfo.firstName} ${customerInfo.lastName}`,

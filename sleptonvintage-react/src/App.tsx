@@ -10,6 +10,9 @@ import ProductDetailPage from './pages/ProductDetailPage';
 import SearchPage from './pages/SearchPage';
 import AuthCallback from './pages/AuthCallback';
 import CheckoutPage from './pages/CheckoutPage';
+import OrdersPage from './pages/OrdersPage';
+import OrderDetailPage from './pages/OrderDetailPage';
+import AdminDashboardPage from './pages/AdminDashboardPage';
 
 // Import styles (remove default Vite styles)
 import './styles/general.css';
@@ -20,6 +23,8 @@ import './styles/cart.css';
 import './styles/auth.css';
 import './styles/product-detail.css';
 import './styles/search.css';
+import './styles/checkout.css';
+import './styles/admin.css';
 
 function App() {
   return (
@@ -39,6 +44,9 @@ function App() {
               <Route path="/search" element={<SearchPage />} />
               <Route path="/cart" element={<CartPage />} />
               <Route path="/checkout" element={<CheckoutPage />} />
+              <Route path="/orders" element={<OrdersPage />} />
+              <Route path="/orders/:orderId" element={<OrderDetailPage />} />
+              <Route path="/admin" element={<AdminDashboardPage />} />
               <Route path="/auth/callback" element={<AuthCallback />} />
             </Routes>
           </div>

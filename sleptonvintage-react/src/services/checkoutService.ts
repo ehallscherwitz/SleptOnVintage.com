@@ -31,6 +31,24 @@ export interface ShippingInfo {
   notes?: string;
 }
 
+export interface PromoResult {
+  applied: boolean;
+  code: string | null;
+  discountRate: number;
+}
+
+function normalizePromoCode(raw?: string | null): string {
+  return (raw || '').trim().toUpperCase();
+}
+
+function evaluatePromo(code?: string | null): PromoResult {
+  const normalized = normalizePromoCode(code);
+  if (normalized === 'SOV') {
+    return { applied: true, code: normalized, discountRate: 0.1 };
+  }
+  return { applied: false, code: null, discountRate: 0 };
+}
+
 export const checkoutService = {
   async parseResponse(response: Response): Promise<{ ok: boolean; data: any; errorMessage?: string }> {
     const text = await response.text();
@@ -111,7 +129,12 @@ export const checkoutService = {
   },
 
   // Create order via Square API
-  async createOrder(cartItems: CheckoutCartItem[], customerInfo: CustomerInfo, shippingInfo: ShippingInfo): Promise<{ data: any; error: any }> {
+  async createOrder(
+    cartItems: CheckoutCartItem[],
+    customerInfo: CustomerInfo,
+    shippingInfo: ShippingInfo,
+    promoCode?: string
+  ): Promise<{ data: any; error: any }> {
     try {
       const response = await fetch('/api/orders/create', {
         method: 'POST',
@@ -121,7 +144,8 @@ export const checkoutService = {
         body: JSON.stringify({
           cartItems,
           customerInfo,
-          shippingInfo
+          shippingInfo,
+          promoCode: normalizePromoCode(promoCode),
         })
       });
 
@@ -135,7 +159,14 @@ export const checkoutService = {
   },
 
   // Process payment via Square API
-  async processPayment(sourceId: string, orderId: string, buyerEmail: string, shippingAddress: ShippingInfo, billingAddress?: ShippingInfo): Promise<{ data: any; error: any }> {
+  async processPayment(
+    sourceId: string,
+    orderId: string,
+    buyerEmail: string,
+    shippingAddress: ShippingInfo,
+    billingAddress: ShippingInfo | undefined,
+    customerInfo: CustomerInfo
+  ): Promise<{ data: any; error: any }> {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const accessToken = session?.access_token;
@@ -151,7 +182,8 @@ export const checkoutService = {
           orderId,
           buyerEmail,
           shippingAddress,
-          billingAddress: billingAddress || shippingAddress // Use shipping as billing if not provided
+          billingAddress: billingAddress || shippingAddress, // Use shipping as billing if not provided
+          customerInfo,
         })
       });
 
@@ -165,16 +197,24 @@ export const checkoutService = {
   },
 
   // Calculate totals for display
-  calculateTotals(cartItems: CheckoutCartItem[]): { subtotal: number; tax: number; total: number } {
+  calculateTotals(
+    cartItems: CheckoutCartItem[],
+    promoCode?: string
+  ): { subtotal: number; discount: number; tax: number; total: number; promo: PromoResult } {
     const subtotal = cartItems.reduce((sum, item) => sum + item.product.price, 0);
+    const promo = evaluatePromo(promoCode);
+    const discount = promo.applied ? Math.round(subtotal * promo.discountRate) : 0;
+    const discountedSubtotal = Math.max(0, subtotal - discount);
     const taxRate = 0.085; // 8.5% tax rate
-    const tax = Math.round(subtotal * taxRate);
-    const total = subtotal + tax;
+    const tax = Math.round(discountedSubtotal * taxRate);
+    const total = discountedSubtotal + tax;
 
     return {
       subtotal,
+      discount,
       tax,
-      total
+      total,
+      promo,
     };
   }
 };

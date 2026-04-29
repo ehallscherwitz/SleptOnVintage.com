@@ -13,6 +13,15 @@ const Header: React.FC = () => {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [avatarFailed, setAvatarFailed] = useState(false);
 
+  const showAdminLink = useMemo(() => {
+    if (!user?.email) return false;
+    const allow = (import.meta.env.VITE_ADMIN_EMAILS || '')
+      .split(',')
+      .map((s: string) => s.trim().toLowerCase())
+      .filter(Boolean);
+    return allow.includes(user.email.toLowerCase());
+  }, [user]);
+
   const avatarUrl = useMemo(() => {
     const u: any = user;
     const raw =
@@ -127,6 +136,14 @@ const Header: React.FC = () => {
                  <div className="user-menu-item">
                    {user.user_metadata?.full_name || user.email}
                  </div>
+                 <Link to="/orders" className="user-menu-item" style={{ display: 'block', textDecoration: 'none', color: 'inherit' }} onClick={() => setShowUserMenu(false)}>
+                   My orders
+                 </Link>
+                 {showAdminLink && (
+                   <Link to="/admin" className="user-menu-item" style={{ display: 'block', textDecoration: 'none', color: 'inherit' }} onClick={() => setShowUserMenu(false)}>
+                     Admin
+                   </Link>
+                 )}
                  <button className="user-menu-item" onClick={handleSignOut}>
                    Sign Out
                  </button>

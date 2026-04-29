@@ -31,7 +31,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(500).json({ error: 'Missing SUPABASE_URL / SUPABASE_ANON_KEY env vars on server.' });
     }
 
-    const { sourceId, orderId, buyerEmail, shippingAddress, billingAddress } = req.body;
+    const { sourceId, orderId, buyerEmail, shippingAddress, billingAddress, customerInfo } = req.body;
 
     // Validate required fields
     if (!sourceId || !orderId) {
@@ -105,7 +105,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const { data: supabaseOrderId, error: finalizeError } = await supabase.rpc('finalize_order', {
         p_square_order_id: orderId,
         p_square_payment_id: result.payment.id,
-        p_customer_info: { email: buyerEmail },
+        p_customer_info: customerInfo ?? { email: buyerEmail },
         p_shipping_info: shippingAddress ?? billingAddress ?? null,
       });
 

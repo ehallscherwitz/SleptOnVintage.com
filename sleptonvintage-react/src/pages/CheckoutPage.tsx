@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import Header from '../components/Header';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { checkoutService, type CheckoutCartItem, type CustomerInfo, type ShippingInfo } from '../services/checkoutService';
@@ -11,31 +13,41 @@ declare global {
 }
 
 export const CheckoutPage: React.FC = () => {
+  const navigate = useNavigate();
   const { resetCart } = useCart();
   const { user } = useAuth();
   const [cartItems, setCartItems] = useState<CheckoutCartItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [initialLoad, setInitialLoad] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [paymentReady, setPaymentReady] = useState(false);
-  const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
+  const [paymentStatus, setPaymentStatus] = useState<'idle' | 'loading' | 'ready' | 'unavailable'>('idle');
   const cardRef = useRef<any>(null);
-  
-  // Form state
+
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo>({
     firstName: '',
     lastName: '',
-    email: user?.email || '',
-    phone: ''
+    email: '',
+    phone: '',
   });
-  
+
   const [shippingInfo, setShippingInfo] = useState<ShippingInfo>({
     address1: '',
     address2: '',
     city: '',
     state: '',
     zipCode: '',
-    notes: ''
+    notes: '',
   });
+  const [promoInput, setPromoInput] = useState('');
+  const [appliedPromoCode, setAppliedPromoCode] = useState<string | null>(null);
+  const [promoMessage, setPromoMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user?.email) {
+      setCustomerInfo((prev) => ({ ...prev, email: prev.email || user.email || '' }));
+    }
+  }, [user?.email]);
 
   const squareConfig = useMemo(() => {
     const applicationId = import.meta.env.VITE_SQUARE_APPLICATION_ID as string | undefined;
@@ -45,14 +57,13 @@ export const CheckoutPage: React.FC = () => {
     return { applicationId, locationId, isSandbox };
   }, []);
 
-  // Load cart items for checkout
   useEffect(() => {
     const loadCartItems = async () => {
-      setLoading(true);
+      setInitialLoad(true);
       try {
-        const { data, error } = await checkoutService.getCartItemsForCheckout();
-        if (error) {
-          setError(error.message || 'Failed to load cart items');
+        const { data, error: loadErr } = await checkoutService.getCartItemsForCheckout();
+        if (loadErr) {
+          setError(loadErr.message || 'Failed to load cart items');
         } else {
           setCartItems(data);
         }
@@ -60,12 +71,14 @@ export const CheckoutPage: React.FC = () => {
         setError('Failed to load cart items');
         console.error('Error loading cart items:', err);
       } finally {
-        setLoading(false);
+        setInitialLoad(false);
       }
     };
 
     if (user) {
-      loadCartItems();
+      void loadCartItems();
+    } else {
+      setInitialLoad(false);
     }
   }, [user]);
 
@@ -90,6 +103,11 @@ export const CheckoutPage: React.FC = () => {
       });
     }
 
+    const container = document.querySelector('#card-container');
+    if (!container) {
+      throw new Error('CARD_CONTAINER_NOT_READY');
+    }
+
     const payments = await window.Square.payments(applicationId, locationId);
     const card = await payments.card();
     await card.attach('#card-container');
@@ -99,23 +117,30 @@ export const CheckoutPage: React.FC = () => {
   useEffect(() => {
     let cancelled = false;
     async function init() {
+      if (!user || initialLoad || cartItems.length === 0) return;
       try {
-        setPaymentStatus(null);
+        setPaymentStatus('loading');
+        // Let the card container render in the current frame first.
+        await new Promise((resolve) => requestAnimationFrame(resolve));
         await ensureSquareCardMounted();
-        if (!cancelled) setPaymentReady(true);
+        if (!cancelled) {
+          setPaymentReady(true);
+          setPaymentStatus('ready');
+        }
       } catch (e: any) {
         if (!cancelled) {
           setPaymentReady(false);
-          setPaymentStatus(e?.message ?? String(e));
+          setPaymentStatus('unavailable');
+          console.error('Square card mount failed:', e);
         }
       }
     }
-    init();
+    void init();
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [user, initialLoad, cartItems.length]);
 
   const handlePayNow = async () => {
     if (cartItems.length === 0) {
@@ -124,7 +149,7 @@ export const CheckoutPage: React.FC = () => {
     }
 
     const requiredFields = ['firstName', 'lastName', 'email', 'address1', 'city', 'state', 'zipCode'];
-    const missingFields = requiredFields.filter(field => {
+    const missingFields = requiredFields.filter((field) => {
       if (field.includes('.')) {
         const [parent, child] = field.split('.');
         return !customerInfo[parent as keyof CustomerInfo] && !shippingInfo[child as keyof ShippingInfo];
@@ -139,16 +164,21 @@ export const CheckoutPage: React.FC = () => {
 
     setLoading(true);
     setError(null);
-    setPaymentStatus(null);
+    setPaymentStatus('idle');
 
     try {
       await ensureSquareCardMounted();
 
-      const { data: orderData, error: orderErr } = await checkoutService.createOrder(cartItems, customerInfo, shippingInfo);
+      const { data: orderData, error: orderErr } = await checkoutService.createOrder(
+        cartItems,
+        customerInfo,
+        shippingInfo,
+        appliedPromoCode || undefined
+      );
       if (orderErr) throw new Error(orderErr.message || 'Failed to create order');
 
-      const orderId = orderData?.order?.id;
-      if (!orderId) throw new Error('Square order ID missing from response.');
+      const squareOrderId = orderData?.order?.id;
+      if (!squareOrderId) throw new Error('Square order ID missing from response.');
 
       const tokenResult = await cardRef.current.tokenize();
       if (tokenResult.status !== 'OK') {
@@ -158,16 +188,23 @@ export const CheckoutPage: React.FC = () => {
       const sourceId = tokenResult.token;
       const { data: payData, error: payErr } = await checkoutService.processPayment(
         sourceId,
-        orderId,
+        squareOrderId,
         customerInfo.email,
         shippingInfo,
-        shippingInfo
+        shippingInfo,
+        customerInfo
       );
       if (payErr) throw new Error(payErr.message || 'Payment failed');
 
-      setPaymentStatus(`✅ Payment ${payData?.payment?.status ?? 'completed'} (Order ${orderId})`);
+      const supabaseOrderId = payData?.supabaseOrderId as string | undefined;
       await resetCart();
       setCartItems([]);
+
+      if (supabaseOrderId) {
+        navigate(`/orders/${supabaseOrderId}`, { state: { checkoutSuccess: true } });
+      } else {
+        navigate('/orders', { state: { checkoutSuccess: true } });
+      }
     } catch (err: any) {
       setError(err?.message || 'Checkout failed');
       console.error('Checkout error:', err);
@@ -182,9 +219,8 @@ export const CheckoutPage: React.FC = () => {
       return;
     }
 
-    // Validate form
     const requiredFields = ['firstName', 'lastName', 'email', 'address1', 'city', 'state', 'zipCode'];
-    const missingFields = requiredFields.filter(field => {
+    const missingFields = requiredFields.filter((field) => {
       if (field.includes('.')) {
         const [parent, child] = field.split('.');
         return !customerInfo[parent as keyof CustomerInfo] && !shippingInfo[child as keyof ShippingInfo];
@@ -201,16 +237,17 @@ export const CheckoutPage: React.FC = () => {
     setError(null);
 
     try {
-      console.log('Creating order with:', { cartItems, customerInfo, shippingInfo });
-      
-      const { data, error } = await checkoutService.createOrder(cartItems, customerInfo, shippingInfo);
-      
-      if (error) {
-        setError(error.message || 'Failed to create order');
+      const { data, error: createErr } = await checkoutService.createOrder(
+        cartItems,
+        customerInfo,
+        shippingInfo,
+        appliedPromoCode || undefined
+      );
+
+      if (createErr) {
+        setError(createErr.message || 'Failed to create order');
       } else {
-        console.log('✅ Order created successfully:', data);
-        alert(`Order created successfully! Order ID: ${data.order.id}`);
-        // Clear cart after successful order
+        alert(`Square order created (no payment). ID: ${data.order.id}`);
         await resetCart();
         setCartItems([]);
       }
@@ -222,192 +259,269 @@ export const CheckoutPage: React.FC = () => {
     }
   };
 
-  const totals = checkoutService.calculateTotals(cartItems);
+  const totals = checkoutService.calculateTotals(cartItems, appliedPromoCode || undefined);
+
+  const applyPromo = () => {
+    const code = promoInput.trim().toUpperCase();
+    if (!code) {
+      setAppliedPromoCode(null);
+      setPromoMessage(null);
+      return;
+    }
+    if (code === 'SOV') {
+      setAppliedPromoCode('SOV');
+      setPromoMessage('Promo applied: SOV (10% off).');
+    } else {
+      setAppliedPromoCode(null);
+      setPromoMessage('Invalid promo code.');
+    }
+  };
 
   if (!user) {
     return (
-      <div className="checkout-page">
-        <h1>Checkout</h1>
-        <p>Please sign in to proceed with checkout.</p>
+      <div className="checkout-shell">
+        <Header />
+        <div className="checkout-inner checkout-empty">
+          <h1 className="checkout-title">Checkout</h1>
+          <p>Please sign in to complete your purchase.</p>
+          <p>
+            <Link to="/" className="checkout-link">
+              Continue shopping
+            </Link>
+          </p>
+        </div>
       </div>
     );
   }
 
-  if (loading && cartItems.length === 0) {
+  if (initialLoad) {
     return (
-      <div className="checkout-page">
-        <h1>Checkout</h1>
-        <p>Loading cart items...</p>
+      <div className="checkout-shell">
+        <Header />
+        <div className="checkout-inner">
+          <h1 className="checkout-title">Checkout</h1>
+          <p style={{ color: 'rgba(255,255,255,0.6)' }}>Loading your cart…</p>
+        </div>
       </div>
     );
   }
 
   if (cartItems.length === 0) {
     return (
-      <div className="checkout-page">
-        <h1>Checkout</h1>
-        <p>Your cart is empty. Add some items to your cart before checking out.</p>
+      <div className="checkout-shell">
+        <Header />
+        <div className="checkout-inner checkout-empty">
+          <h1 className="checkout-title">Checkout</h1>
+          <p>Your cart is empty.</p>
+          <p>
+            <Link to="/" className="checkout-link">
+              Browse products
+            </Link>
+            {' · '}
+            <Link to="/cart" className="checkout-link">
+              View cart
+            </Link>
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="checkout-page">
-      <h1>Checkout</h1>
-      
-      {/* Cart Summary */}
-      <div className="cart-summary">
-        <h2>Order Summary</h2>
-        {cartItems.map((item) => (
-          <div key={item.id} className="cart-item">
-            <div className="item-details">
-              <h4>{item.product.name}</h4>
-              <p>Size: {item.product.size} | ${formatUsdFromCents(item.product.price)}</p>
-            </div>
+    <div className="checkout-shell">
+      <Header />
+      <div className="checkout-inner">
+        <h1 className="checkout-title">Checkout</h1>
+        <p className="checkout-subtitle">Review your order, enter shipping details, and pay securely.</p>
+
+        {error && <div className="checkout-alert checkout-alert--error">{error}</div>}
+        {!paymentReady && paymentStatus === 'unavailable' && (
+          <div className="checkout-alert checkout-alert--info">
+            Payment form is temporarily unavailable. Please refresh and try again.
           </div>
-        ))}
-        <div className="totals">
-          <div className="total-line">
-            <span>Subtotal:</span>
-            <span>${formatUsdFromCents(totals.subtotal)}</span>
-          </div>
-          <div className="total-line">
-            <span>Tax (8.5%):</span>
-            <span>${formatUsdFromCents(totals.tax)}</span>
-          </div>
-          <div className="total-line total">
-            <span>Total:</span>
-            <span>${formatUsdFromCents(totals.total)}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Customer Information */}
-      <div className="customer-info">
-        <h2>Customer Information</h2>
-        <div className="form-row">
-          <input
-            type="text"
-            placeholder="First Name *"
-            value={customerInfo.firstName}
-            onChange={(e) => setCustomerInfo({...customerInfo, firstName: e.target.value})}
-          />
-          <input
-            type="text"
-            placeholder="Last Name *"
-            value={customerInfo.lastName}
-            onChange={(e) => setCustomerInfo({...customerInfo, lastName: e.target.value})}
-          />
-        </div>
-        <div className="form-row">
-          <input
-            type="email"
-            placeholder="Email *"
-            value={customerInfo.email}
-            onChange={(e) => setCustomerInfo({...customerInfo, email: e.target.value})}
-          />
-          <input
-            type="tel"
-            placeholder="Phone"
-            value={customerInfo.phone}
-            onChange={(e) => setCustomerInfo({...customerInfo, phone: e.target.value})}
-          />
-        </div>
-      </div>
-
-      {/* Shipping Information */}
-      <div className="shipping-info">
-        <h2>Shipping Information</h2>
-        <input
-          type="text"
-          placeholder="Address Line 1 *"
-          value={shippingInfo.address1}
-          onChange={(e) => setShippingInfo({...shippingInfo, address1: e.target.value})}
-        />
-        <input
-          type="text"
-          placeholder="Address Line 2"
-          value={shippingInfo.address2}
-          onChange={(e) => setShippingInfo({...shippingInfo, address2: e.target.value})}
-        />
-        <div className="form-row">
-          <input
-            type="text"
-            placeholder="City *"
-            value={shippingInfo.city}
-            onChange={(e) => setShippingInfo({...shippingInfo, city: e.target.value})}
-          />
-          <input
-            type="text"
-            placeholder="State *"
-            value={shippingInfo.state}
-            onChange={(e) => setShippingInfo({...shippingInfo, state: e.target.value})}
-          />
-          <input
-            type="text"
-            placeholder="ZIP Code *"
-            value={shippingInfo.zipCode}
-            onChange={(e) => setShippingInfo({...shippingInfo, zipCode: e.target.value})}
-          />
-        </div>
-        <textarea
-          placeholder="Shipping Notes (Optional)"
-          value={shippingInfo.notes}
-          onChange={(e) => setShippingInfo({...shippingInfo, notes: e.target.value})}
-          rows={3}
-        />
-      </div>
-
-      {/* Error Display */}
-      {error && (
-        <div className="error-message">
-          {error}
-        </div>
-      )}
-
-      {paymentStatus && (
-        <div className="error-message" style={{ color: paymentStatus.startsWith('✅') ? '#9ef6a7' : undefined }}>
-          {paymentStatus}
-        </div>
-      )}
-
-      {/* Payment */}
-      <div className="checkout-actions">
-        <h2>Payment</h2>
-        <div id="card-container" style={{ marginTop: 12, marginBottom: 12 }} />
-
-        {!paymentReady && (
-          <p className="test-note" style={{ opacity: 0.9 }}>
-            Loading payment form… {paymentStatus ? `(${paymentStatus})` : null}
-          </p>
         )}
 
-        <button
-          onClick={handlePayNow}
-          disabled={loading || !paymentReady}
-          className="test-order-button"
-        >
-          {loading ? 'Processing…' : `Pay $${formatUsdFromCents(totals.total)}`}
-        </button>
-      </div>
+        <div className="checkout-layout">
+          <div className="checkout-main">
+            <section className="checkout-section">
+              <h2>Contact</h2>
+              <div className="checkout-form-grid">
+                <div className="checkout-form-row">
+                  <input
+                    className="checkout-input"
+                    type="text"
+                    placeholder="First name *"
+                    value={customerInfo.firstName}
+                    onChange={(e) => setCustomerInfo({ ...customerInfo, firstName: e.target.value })}
+                    autoComplete="given-name"
+                  />
+                  <input
+                    className="checkout-input"
+                    type="text"
+                    placeholder="Last name *"
+                    value={customerInfo.lastName}
+                    onChange={(e) => setCustomerInfo({ ...customerInfo, lastName: e.target.value })}
+                    autoComplete="family-name"
+                  />
+                </div>
+                <div className="checkout-form-row">
+                  <input
+                    className="checkout-input"
+                    type="email"
+                    placeholder="Email *"
+                    value={customerInfo.email}
+                    onChange={(e) => setCustomerInfo({ ...customerInfo, email: e.target.value })}
+                    autoComplete="email"
+                  />
+                  <input
+                    className="checkout-input"
+                    type="tel"
+                    placeholder="Phone (optional)"
+                    value={customerInfo.phone}
+                    onChange={(e) => setCustomerInfo({ ...customerInfo, phone: e.target.value })}
+                    autoComplete="tel"
+                  />
+                </div>
+              </div>
+            </section>
 
-      {/* Test Order Button */}
-      <div className="checkout-actions">
-        <button 
-          onClick={handleTestOrder}
-          disabled={loading}
-          className="test-order-button"
-        >
-          {loading ? 'Creating Order...' : 'Test Order Creation (No Payment)'}
-        </button>
-        <p className="test-note">
-          This will create an order in Square without processing payment. 
-          Perfect for testing the API integration!
-        </p>
+            <section className="checkout-section">
+              <h2>Shipping address</h2>
+              <div className="checkout-form-grid">
+                <input
+                  className="checkout-input"
+                  type="text"
+                  placeholder="Address line 1 *"
+                  value={shippingInfo.address1}
+                  onChange={(e) => setShippingInfo({ ...shippingInfo, address1: e.target.value })}
+                  autoComplete="address-line1"
+                />
+                <input
+                  className="checkout-input"
+                  type="text"
+                  placeholder="Address line 2 (optional)"
+                  value={shippingInfo.address2}
+                  onChange={(e) => setShippingInfo({ ...shippingInfo, address2: e.target.value })}
+                  autoComplete="address-line2"
+                />
+                <div className="checkout-form-row-3">
+                  <input
+                    className="checkout-input"
+                    type="text"
+                    placeholder="City *"
+                    value={shippingInfo.city}
+                    onChange={(e) => setShippingInfo({ ...shippingInfo, city: e.target.value })}
+                    autoComplete="address-level2"
+                  />
+                  <input
+                    className="checkout-input"
+                    type="text"
+                    placeholder="State *"
+                    value={shippingInfo.state}
+                    onChange={(e) => setShippingInfo({ ...shippingInfo, state: e.target.value })}
+                    autoComplete="address-level1"
+                  />
+                  <input
+                    className="checkout-input"
+                    type="text"
+                    placeholder="ZIP *"
+                    value={shippingInfo.zipCode}
+                    onChange={(e) => setShippingInfo({ ...shippingInfo, zipCode: e.target.value })}
+                    autoComplete="postal-code"
+                  />
+                </div>
+              </div>
+            </section>
+
+            <section className="checkout-section">
+              <h2>Promo code</h2>
+              <div className="checkout-promo-row">
+                <input
+                  className="checkout-input checkout-promo-input"
+                  type="text"
+                  placeholder="Enter promo code"
+                  value={promoInput}
+                  onChange={(e) => setPromoInput(e.target.value)}
+                />
+                <button type="button" className="checkout-btn-secondary checkout-promo-btn" onClick={applyPromo}>
+                  Apply
+                </button>
+              </div>
+              {promoMessage && (
+                <p className="checkout-hint" style={{ color: totals.promo.applied ? '#9ef6a7' : '#ffb4bd' }}>
+                  {promoMessage}
+                </p>
+              )}
+            </section>
+
+            <section className="checkout-section">
+              <h2>Payment</h2>
+              <p className="checkout-hint">Card details are collected securely by Square.</p>
+              <div id="card-container" className="checkout-card-frame" />
+              <button type="button" className="checkout-btn-primary" onClick={() => void handlePayNow()} disabled={loading || !paymentReady}>
+                {loading ? 'Processing…' : `Pay $${formatUsdFromCents(totals.total)}`}
+              </button>
+              {import.meta.env.DEV && (
+                <>
+                  <button type="button" className="checkout-btn-secondary" onClick={() => void handleTestOrder()} disabled={loading}>
+                    Dev: create Square order only (no charge)
+                  </button>
+                  <p className="checkout-hint">Shown only in development builds.</p>
+                </>
+              )}
+            </section>
+          </div>
+
+          <aside className="checkout-aside">
+            <div className="checkout-summary-card">
+              <h2>Order summary</h2>
+              {cartItems.map((item) => (
+                <div key={item.id} className="checkout-line-item">
+                  {item.product.image ? (
+                    <img className="checkout-line-thumb" src={item.product.image} alt="" />
+                  ) : (
+                    <div className="checkout-line-thumb" />
+                  )}
+                  <div className="checkout-line-meta">
+                    <p className="checkout-line-name">{item.product.name}</p>
+                    <p className="checkout-line-detail">
+                      Size {item.product.size}
+                    </p>
+                  </div>
+                  <div className="checkout-line-price">${formatUsdFromCents(item.product.price)}</div>
+                </div>
+              ))}
+              <div className="checkout-totals">
+                <div className="checkout-total-row">
+                  <span>Subtotal</span>
+                  <strong>${formatUsdFromCents(totals.subtotal)}</strong>
+                </div>
+                {totals.discount > 0 && (
+                  <div className="checkout-total-row">
+                    <span>Promo ({totals.promo.code})</span>
+                    <strong>- ${formatUsdFromCents(totals.discount)}</strong>
+                  </div>
+                )}
+                <div className="checkout-total-row">
+                  <span>Estimated tax</span>
+                  <strong>${formatUsdFromCents(totals.tax)}</strong>
+                </div>
+                <div className="checkout-total-row">
+                  <span>Shipping</span>
+                  <strong>Free</strong>
+                </div>
+                <div className="checkout-total-grand">
+                  <span>Total</span>
+                  <span>${formatUsdFromCents(totals.total)}</span>
+                </div>
+              </div>
+              <p className="checkout-shipping-note">USPS tracking will appear on your order once the item ships.</p>
+            </div>
+          </aside>
+        </div>
       </div>
     </div>
   );
 };
 
 export default CheckoutPage;
-

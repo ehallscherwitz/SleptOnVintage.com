@@ -83,7 +83,7 @@
 }
 
 .user-button {
-  padding: 0 !important;
+  padding: 2px !important;
   overflow: hidden;
   line-height: 0;
 }
@@ -91,7 +91,7 @@
 .user-avatar {
   width: 100%;
   height: 100%;
-  border-radius: inherit;
+  border-radius: 50%;
   object-fit: cover;
   display: block;
   margin: 0;
@@ -174,11 +174,19 @@
 }
 
 @media (max-width: 700px) {
+  .header-right {
+    flex: 0 0 auto;
+    gap: 4px;
+    padding-right: 6px;
+  }
+
   .search-button, .user-button, .cart-button {
-    margin: 0 5px;
-    width: 40px;
-    height: 40px;
-    border-radius: 20px;
+    margin: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: 18px;
+    border-width: 1px;
+    font-size: 14px;
   }
 
   .cart-counter{
@@ -198,8 +206,26 @@
     font-size: 16px;
     padding-left: 8px;
     padding-right: 8px;
+    min-width: 0;
   }
 
+  .brand-name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+}
+
+@media (max-width: 500px) {
+  .brand-name {
+    display: none;
+  }
+
+  .header-center {
+    padding-left: 6px;
+    padding-right: 6px;
+  }
 }
 
 /* User menu styles */
