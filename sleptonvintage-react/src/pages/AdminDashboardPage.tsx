@@ -35,6 +35,8 @@ const AdminDashboardPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [settingPrimaryImages, setSettingPrimaryImages] = useState(false);
+  const [primaryImagesResult, setPrimaryImagesResult] = useState<string | null>(null);
 
   const [editing, setEditing] = useState<{
     orderId: string;
@@ -103,6 +105,29 @@ const AdminDashboardPage: React.FC = () => {
     else void load();
   };
 
+  const setPrimaryImagesFromStorage = async () => {
+    const overwrite = window.confirm(
+      'Overwrite ALL existing products.image values?\n\nOK = overwrite existing images (recommended if you want to switch everything to Storage paths).\nCancel = only fill missing images.'
+    );
+
+    const ok = window.confirm(
+      `Set primary listing images from Storage?\n\nThis will scan images/products/{id}/ and pick the earliest uploaded file.\n\nMode: ${overwrite ? 'OVERWRITE existing products.image' : 'ONLY fill missing products.image'}`
+    );
+    if (!ok) return;
+
+    setSettingPrimaryImages(true);
+    setPrimaryImagesResult(null);
+    const { data, error } = await adminService.setPrimaryImages({ overwrite, limit: 2000 });
+    setSettingPrimaryImages(false);
+    if (error) {
+      setPrimaryImagesResult(`Error: ${error}`);
+      return;
+    }
+    setPrimaryImagesResult(
+      `Scanned ${data?.scanned ?? 0} products · Updated ${data?.updated ?? 0} · Skipped ${data?.skipped ?? 0} · Missing ${data?.missing ?? 0}`
+    );
+  };
+
   if (authLoading) {
     return (
       <div className="admin-page">
@@ -133,10 +158,46 @@ const AdminDashboardPage: React.FC = () => {
             <h1 className="admin-title">Orders (admin)</h1>
             <p className="admin-sub">Update status / tracking, or delete an order and restore inventory.</p>
           </div>
-          <button type="button" className="admin-btn-secondary" onClick={() => void load()} disabled={loading}>
-            Refresh
-          </button>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            <button type="button" className="admin-btn-secondary" onClick={() => void load()} disabled={loading}>
+              Refresh
+            </button>
+          </div>
         </div>
+
+        <div
+          style={{
+            border: '1px solid rgba(255,255,255,0.18)',
+            borderRadius: 12,
+            padding: 14,
+            marginBottom: 14,
+            background: 'rgba(0,0,0,0.22)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ fontWeight: 700, color: 'white' }}>Admin tools</div>
+              <div className="admin-muted" style={{ marginTop: 4 }}>
+                Auto-fill `products.image` from the first uploaded Storage image in `images/products/&lt;id&gt;/`.
+              </div>
+            </div>
+            <button
+              type="button"
+              className="checkout-btn-primary"
+              onClick={() => void setPrimaryImagesFromStorage()}
+              disabled={settingPrimaryImages || loading}
+              style={{ width: 220, minWidth: 220 }}
+            >
+              {settingPrimaryImages ? 'Setting images…' : 'Set primary images'}
+            </button>
+          </div>
+        </div>
+
+        {primaryImagesResult && (
+          <div className="checkout-alert checkout-alert--info" style={{ marginBottom: 14 }}>
+            {primaryImagesResult}
+          </div>
+        )}
 
         {loading && <p className="admin-muted">Loading orders…</p>}
         {!loading && loadError && (

@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import Header from '../components/Header';
-import { productService, type Product } from '../services/productService';
+import { getPrimaryProductImageUrl, productService, resolveProductImageUrls, type Product } from '../services/productService';
 import { useCart } from '../context/CartContext';
 import { formatUsdFromCents } from '../utils/money';
 
@@ -14,6 +14,8 @@ const ProductDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [addingToCart, setAddingToCart] = useState(false);
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -27,11 +29,15 @@ const ProductDetailPage: React.FC = () => {
         setLoading(true);
         setError(null);
         const productData = await productService.getProductById(parseInt(id));
-        
+
         if (!productData) {
           setError('Product not found');
+          setImageUrls([]);
         } else {
           setProduct(productData);
+          const urls = await resolveProductImageUrls(productData.id, getPrimaryProductImageUrl(productData));
+          setImageUrls(urls);
+          setActiveImageIndex(0);
         }
       } catch (err) {
         setError('Failed to load product');
@@ -114,11 +120,68 @@ const ProductDetailPage: React.FC = () => {
 
         <div className="product-detail-grid">
           <div className="product-image-section">
-            <img 
-              className="product-detail-image" 
-              src={product.image} 
-              alt={product.name}
-            />
+            <div className="product-gallery">
+              <div className="product-gallery-main">
+                {imageUrls.length > 0 ? (
+                  <>
+                    <img
+                      className="product-detail-image"
+                      src={imageUrls[activeImageIndex]}
+                      alt={`${product.name} — photo ${activeImageIndex + 1}`}
+                    />
+                    {imageUrls.length > 1 && (
+                      <>
+                        <button
+                          type="button"
+                          className="product-gallery-nav product-gallery-prev"
+                          aria-label="Previous photo"
+                          onClick={() =>
+                            setActiveImageIndex((i: number) =>
+                              i === 0 ? imageUrls.length - 1 : i - 1
+                            )
+                          }
+                        >
+                          ‹
+                        </button>
+                        <button
+                          type="button"
+                          className="product-gallery-nav product-gallery-next"
+                          aria-label="Next photo"
+                          onClick={() =>
+                            setActiveImageIndex((i: number) =>
+                              i >= imageUrls.length - 1 ? 0 : i + 1
+                            )
+                          }
+                        >
+                          ›
+                        </button>
+                        <span className="product-gallery-counter">
+                          {activeImageIndex + 1} / {imageUrls.length}
+                        </span>
+                      </>
+                    )}
+                  </>
+                ) : (
+                  <div className="product-gallery-empty">No image</div>
+                )}
+              </div>
+              {imageUrls.length > 1 && (
+                <div className="product-gallery-thumbs" role="tablist" aria-label="Product photos">
+                  {imageUrls.map((url, idx) => (
+                    <button
+                      key={`${idx}-${url}`}
+                      type="button"
+                      role="tab"
+                      aria-selected={idx === activeImageIndex}
+                      className={`product-gallery-thumb ${idx === activeImageIndex ? 'active' : ''}`}
+                      onClick={() => setActiveImageIndex(idx)}
+                    >
+                      <img src={url} alt="" />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="product-info-section">

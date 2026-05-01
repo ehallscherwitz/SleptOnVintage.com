@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Header from '../components/Header';
 import { useCart } from '../context/CartContext';
-import { productService, type Product } from '../services/productService';
+import { getPrimaryProductImageUrl, productService, type Product } from '../services/productService';
 import { formatUsdFromCents } from '../utils/money';
 
 interface CategoryPageProps {
@@ -71,7 +71,7 @@ const CategoryPage: React.FC<CategoryPageProps> = ({ category, title }) => {
           <div key={product.id} className="category">
             <Link to={`/product/${product.id}`} className="product-link">
               <div className="thumbnail-row">
-                <img className="thumbnail" src={product.image} alt={product.name} />
+                <img className="thumbnail" src={getPrimaryProductImageUrl(product)} alt={product.name} />
               </div>
               <div className="category-info-row">
                 <div className="category-title" style={{ fontSize: '14px' }}>

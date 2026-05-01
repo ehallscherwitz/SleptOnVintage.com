@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Header from '../components/Header';
 import { useCart } from '../context/CartContext';
-import { productService, type Product } from '../services/productService';
+import { getPrimaryProductImageUrl, productService, type Product } from '../services/productService';
 import { formatUsdFromCents } from '../utils/money';
 
 const CartPage: React.FC = () => {
@@ -71,7 +71,7 @@ const CartPage: React.FC = () => {
               {cartProducts.map((product) => (
                 <div key={product.id} className="product">
                   <div className="thumbnail-container">
-                    <img className="cart-thumbnail" src={product.image} alt={product.name} />
+                    <img className="cart-thumbnail" src={getPrimaryProductImageUrl(product)} alt={product.name} />
                   </div>
 
                   <div className="product-info">

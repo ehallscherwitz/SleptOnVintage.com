@@ -68,4 +68,22 @@ export const adminService = {
       return { error: e instanceof Error ? e.message : 'Delete failed' };
     }
   },
+
+  async setPrimaryImages(body?: {
+    overwrite?: boolean;
+    limit?: number;
+  }): Promise<{ data?: any; error?: string }> {
+    try {
+      const response = await fetch('/api/admin/set-primary-images', {
+        method: 'POST',
+        headers: await authHeaders(),
+        body: JSON.stringify(body || {}),
+      });
+      const data = await parseJson(response);
+      if (!response.ok) return { error: data?.error || `HTTP ${response.status}` };
+      return { data };
+    } catch (e) {
+      return { error: e instanceof Error ? e.message : 'Request failed' };
+    }
+  },
 };

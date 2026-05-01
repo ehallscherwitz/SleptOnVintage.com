@@ -10,7 +10,7 @@ export interface CheckoutCartItem {
     // stored in cents
     price: number;
     size: string;
-    image: string;
+    image?: string | null;
     category: string;
   };
 }
