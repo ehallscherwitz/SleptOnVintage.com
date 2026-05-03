@@ -44,14 +44,19 @@ const AuthCallback: React.FC = () => {
   }, [navigate]);
 
   return (
-    <div style={{ 
-      display: 'flex', 
-      justifyContent: 'center', 
-      alignItems: 'center', 
-      height: '100vh',
-      color: 'white',
-      fontFamily: 'Inter, Arial'
-    }}>
+    <div
+      style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        minHeight: '100vh',
+        /* app-main reserves space for fixed header; this route has no header */
+        marginTop: 'calc(-100px - env(safe-area-inset-top, 0px))',
+        paddingTop: 'env(safe-area-inset-top, 0px)',
+        color: 'white',
+        fontFamily: 'Inter, Arial',
+      }}
+    >
       <div>
         <h2>Completing sign in...</h2>
         <p>Please wait while we redirect you.</p>

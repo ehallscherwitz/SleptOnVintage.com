@@ -75,6 +75,9 @@ const AdminProductsPage: React.FC = () => {
             <p className="admin-sub">Open a product to edit details, photos, and order. Drag photos to reorder, then save order.</p>
           </div>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <Link to="/admin/products/new" className="checkout-btn-primary" style={{ textDecoration: 'none', display: 'inline-block' }}>
+              New listing
+            </Link>
             <Link to="/admin" className="admin-btn-secondary" style={{ textDecoration: 'none', display: 'inline-block' }}>
               Orders
             </Link>

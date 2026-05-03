@@ -11,6 +11,7 @@ html, body, #root {
 
 html {
   height: 100%;
+  scroll-padding-top: calc(100px + env(safe-area-inset-top, 0px) + 12px);
 }
 
 body {
@@ -32,6 +33,11 @@ body {
   padding: 0;
   max-width: unset;
   text-align: unset;
+}
+
+/* Fixed header is 100px + notch; push routed content below it on every page */
+.app-layout > .app-main {
+  padding-top: calc(100px + env(safe-area-inset-top, 0px));
 }
 
 p{

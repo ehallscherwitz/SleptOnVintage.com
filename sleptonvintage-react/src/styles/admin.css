@@ -349,6 +349,22 @@
   cursor: not-allowed;
 }
 
+.admin-new-listing-file-list {
+  margin: 0.5rem 0 0;
+  padding-left: 1.1rem;
+  font-size: 0.88rem;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.admin-new-listing-file-list li {
+  margin: 0.35rem 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
 .admin-listing-edit-link {
   display: inline-block;
   margin-top: 0.35rem;

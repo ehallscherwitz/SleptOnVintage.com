@@ -126,6 +126,50 @@ async function handleDeleteOrder(req: VercelRequest, res: VercelResponse, auth: 
   return res.status(200).json({ success: true, restoredProductIds: productIds });
 }
 
+async function handleCreateProduct(req: VercelRequest, res: VercelResponse, auth: AdminOk) {
+  const body = parseBody(req);
+  const name = typeof body.name === 'string' ? body.name.trim() : '';
+  const size = typeof body.size === 'string' ? body.size.trim() : '';
+  if (!name) return res.status(400).json({ error: 'name required' });
+  if (!size) return res.status(400).json({ error: 'size required' });
+
+  const pr = body.priceCents;
+  const priceCents =
+    typeof pr === 'number' && Number.isFinite(pr)
+      ? Math.floor(pr)
+      : typeof pr === 'string' && pr.trim()
+        ? parseInt(pr, 10)
+        : NaN;
+  if (!Number.isFinite(priceCents) || priceCents < 0) {
+    return res.status(400).json({ error: 'priceCents required (integer >= 0)' });
+  }
+
+  const c = typeof body.category === 'string' ? body.category.trim().toLowerCase() : '';
+  if (!CATEGORIES.has(c)) return res.status(400).json({ error: 'Invalid category' });
+
+  const available = typeof body.available === 'boolean' ? body.available : true;
+
+  let image: string | null = null;
+  if (body.image === null) image = null;
+  else if (typeof body.image === 'string') {
+    const im = body.image.trim();
+    image = im || null;
+  }
+
+  const insert: Record<string, unknown> = {
+    name,
+    size,
+    price: priceCents,
+    category: c,
+    available,
+    image,
+  };
+
+  const { data, error } = await auth.service.from('products').insert(insert).select().maybeSingle();
+  if (error) return res.status(500).json({ error: error.message });
+  return res.status(201).json({ product: data });
+}
+
 async function handleGetProduct(req: VercelRequest, res: VercelResponse, auth: AdminOk) {
   const body = parseBody(req);
   const idRaw = body.productId;
@@ -466,6 +510,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return handleUpdateOrder(req, res, auth);
     case 'delete-order':
       return handleDeleteOrder(req, res, auth);
+    case 'create-product':
+      return handleCreateProduct(req, res, auth);
     case 'get-product':
       return handleGetProduct(req, res, auth);
     case 'update-product':

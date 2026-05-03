@@ -53,6 +53,17 @@ This document is the **ordered backlog** for Slept On Vintage ecommerce. We tick
 
 ---
 
+## Future implementations
+
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| F.1 | **eBay API** — call eBay for **secondary upload** (cross-list or sync inventory from shop → eBay) | Pending | OAuth + listing APIs; map product fields + photos |
+| F.2 | **Payments** — make **payment executable** end-to-end (production Square / env, tokenization, success path hardened) | Pending | Align sandbox vs prod; verify `api/payments/create` + finalize in all cases |
+| F.3 | **Spinning SOV video** — add branded **spinning Slept On Vintage** video asset (hero, loading, or about) | Pending | Export loop-friendly WebM/MP4; performance + `prefers-reduced-motion` |
+| F.4 | **Footer** — **complete footer** (links, layout, legal, social beyond current Instagram strip) | Pending | Overlaps Phase 4.3; expand `Footer.tsx` + `footer.css` |
+
+---
+
 ## How we use this doc
 
 1. Work **top to bottom** within a phase unless something blocks you.

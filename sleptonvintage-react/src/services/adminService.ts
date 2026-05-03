@@ -90,6 +90,28 @@ export const adminService = {
     }
   },
 
+  async createProduct(body: {
+    name: string;
+    size: string;
+    priceCents: number;
+    category: string;
+    available?: boolean;
+    image?: string | null;
+  }): Promise<{ product?: unknown; error?: string }> {
+    try {
+      const response = await fetch(ADMIN_API, {
+        method: 'POST',
+        headers: await authHeaders(),
+        body: JSON.stringify({ op: 'create-product', ...body }),
+      });
+      const data = await parseJson(response);
+      if (!response.ok) return { error: data?.error || `HTTP ${response.status}` };
+      return { product: data.product };
+    } catch (e) {
+      return { error: e instanceof Error ? e.message : 'Create failed' };
+    }
+  },
+
   async getAdminProduct(productId: number): Promise<{ product?: unknown; storageObjectPrefix?: string; error?: string }> {
     try {
       const response = await fetch(ADMIN_API, {
