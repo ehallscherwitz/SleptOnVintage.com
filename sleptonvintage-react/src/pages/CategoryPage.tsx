@@ -63,6 +63,16 @@ const CategoryPage: React.FC<CategoryPageProps> = ({ category, title }) => {
     );
   }
 
+  if (products.length === 0) {
+    return (
+      <div>
+        <Header />
+        <div className="subheader">{title}</div>
+        <p className="category-page-empty">No {title} available, check back soon!</p>
+      </div>
+    );
+  }
+
   return (
     <div>
       <Header />

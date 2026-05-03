@@ -32,10 +32,10 @@ This document is the **ordered backlog** for Slept On Vintage ecommerce. We tick
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
-| 3.1 | **Admin gate** — `ADMIN_EMAILS` + JWT + `SUPABASE_SERVICE_ROLE_KEY` server-side (`api/adminAuth.ts`) | Done | Same email must appear in signed-in Google session |
-| 3.2 | **Admin orders list** — `GET /api/admin/list-orders`, UI `/admin` (`AdminDashboardPage`) | Done | |
-| 3.3 | **Tracking + status** — `PATCH /api/admin/update-order` (+ modal on dashboard) | Done | Status `shipped` sets `shipped_at` |
-| 3.4 | **Delete order** — `POST /api/admin/delete-order`: restore `products.available`, delete `orders` | Done | Confirm in UI |
+| 3.1 | **Admin gate** — `ADMIN_EMAILS` + JWT + `SUPABASE_SERVICE_ROLE_KEY` server-side (`server/adminAuth.ts`, used by `api/admin.ts`) | Done | Same email must appear in signed-in Google session |
+| 3.2 | **Admin orders list** — `GET /api/admin?op=list-orders`, UI `/admin` (`AdminDashboardPage`) | Done | |
+| 3.3 | **Tracking + status** — `POST /api/admin` with `{ "op": "update-order", ... }` (+ modal on dashboard) | Done | Status `shipped` sets `shipped_at` |
+| 3.4 | **Delete order** — `POST /api/admin` with `{ "op": "delete-order", "orderId": "..." }`: restore `products.available`, delete `orders` | Done | Confirm in UI |
 | 3.5 | **Header Admin link** — optional `VITE_ADMIN_EMAILS` to show link only for you | Done | Still need server-side allowlist |
 | — | Filters / search admin list | Pending | Nice-to-have |
 | — | **Refund / cancel in Square** — Square refund API + sync DB | Pending | Separate from DB delete flow |
@@ -69,6 +69,6 @@ This document is the **ordered backlog** for Slept On Vintage ecommerce. We tick
 | Orders UI | `sleptonvintage-react/src/pages/OrdersPage.tsx`, `sleptonvintage-react/src/pages/OrderDetailPage.tsx`, `sleptonvintage-react/src/services/orderService.ts` |
 | Payment + DB finalize | `sleptonvintage-react/api/payments/create.ts`, `supabase-orders.sql` (`finalize_order`) |
 | Routes | `sleptonvintage-react/src/App.tsx` |
-| Admin API | `sleptonvintage-react/api/adminAuth.ts`, `api/admin/list-orders.ts`, `update-order.ts`, `delete-order.ts` |
-| Admin UI | `sleptonvintage-react/src/pages/AdminDashboardPage.tsx`, `src/services/adminService.ts`, `src/styles/admin.css` |
+| Admin API | `sleptonvintage-react/api/admin.ts` (single handler: `GET ?op=…` or `POST` JSON `{ op }`), `server/adminAuth.ts`, `server/productImageUtils.ts`, `server/productStoragePrefix.ts` |
+| Admin UI | `sleptonvintage-react/src/pages/AdminDashboardPage.tsx`, `AdminProductsPage.tsx`, `AdminProductEditPage.tsx`, `src/services/adminService.ts`, `src/styles/admin.css` |
 | Schema | `supabase-manual-schema.sql`, `supabase-orders.sql`, `supabase-migrate-price-to-cents.sql` |

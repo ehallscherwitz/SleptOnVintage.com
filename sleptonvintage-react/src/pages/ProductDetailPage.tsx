@@ -35,7 +35,7 @@ const ProductDetailPage: React.FC = () => {
           setImageUrls([]);
         } else {
           setProduct(productData);
-          const urls = await resolveProductImageUrls(productData.id, getPrimaryProductImageUrl(productData));
+          const urls = await resolveProductImageUrls(productData, getPrimaryProductImageUrl(productData));
           setImageUrls(urls);
           setActiveImageIndex(0);
         }

@@ -13,6 +13,8 @@ import CheckoutPage from './pages/CheckoutPage';
 import OrdersPage from './pages/OrdersPage';
 import OrderDetailPage from './pages/OrderDetailPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
+import AdminProductsPage from './pages/AdminProductsPage';
+import AdminProductEditPage from './pages/AdminProductEditPage';
 
 // Import styles (remove default Vite styles)
 import './styles/general.css';
@@ -47,6 +49,8 @@ function App() {
               <Route path="/orders" element={<OrdersPage />} />
               <Route path="/orders/:orderId" element={<OrderDetailPage />} />
               <Route path="/admin" element={<AdminDashboardPage />} />
+              <Route path="/admin/products" element={<AdminProductsPage />} />
+              <Route path="/admin/products/:id" element={<AdminProductEditPage />} />
               <Route path="/auth/callback" element={<AuthCallback />} />
             </Routes>
           </div>

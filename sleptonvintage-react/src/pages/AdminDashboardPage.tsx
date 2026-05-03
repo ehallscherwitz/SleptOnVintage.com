@@ -159,6 +159,9 @@ const AdminDashboardPage: React.FC = () => {
             <p className="admin-sub">Update status / tracking, or delete an order and restore inventory.</p>
           </div>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            <Link to="/admin/products" className="admin-btn-secondary" style={{ textDecoration: 'none', display: 'inline-block' }}>
+              Edit listings
+            </Link>
             <button type="button" className="admin-btn-secondary" onClick={() => void load()} disabled={loading}>
               Refresh
             </button>
@@ -178,7 +181,7 @@ const AdminDashboardPage: React.FC = () => {
             <div>
               <div style={{ fontWeight: 700, color: 'white' }}>Admin tools</div>
               <div className="admin-muted" style={{ marginTop: 4 }}>
-                Auto-fill `products.image` from the first uploaded Storage image in `images/products/&lt;id&gt;/`.
+                Auto-fill `products.image` from the first Storage image in `images/products/&lt;slug-or-id&gt;/`.
               </div>
             </div>
             <button

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { getListingThumbnailUrl, type Product } from '../services/productService';
 
-type ThumbnailProduct = Pick<Product, 'id' | 'image' | 'name'>;
+type ThumbnailProduct = Pick<Product, 'id' | 'image' | 'name' | 'storage_prefix'>;
 
 interface ProductThumbnailProps {
   product: ThumbnailProduct;
@@ -22,7 +22,7 @@ export const ProductThumbnail: React.FC<ProductThumbnailProps> = ({ product, cla
     return () => {
       cancelled = true;
     };
-  }, [product.id, product.image]);
+  }, [product.id, product.image, product.storage_prefix]);
 
   if (src === undefined) {
     return <div className={className} aria-hidden style={{ background: 'rgba(255,255,255,0.06)' }} />;

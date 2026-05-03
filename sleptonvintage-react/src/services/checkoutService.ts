@@ -11,6 +11,7 @@ export interface CheckoutCartItem {
     price: number;
     size: string;
     image?: string | null;
+    storage_prefix?: string | null;
     category: string;
   };
 }
@@ -99,6 +100,7 @@ export const checkoutService = {
             price,
             size,
             image,
+            storage_prefix,
             category
           )
         `)

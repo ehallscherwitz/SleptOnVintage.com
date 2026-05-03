@@ -1,5 +1,7 @@
 import { supabase } from '../lib/supabase';
 
+const ADMIN_API = '/api/admin';
+
 async function authHeaders(): Promise<HeadersInit> {
   const {
     data: { session },
@@ -23,7 +25,7 @@ async function parseJson(response: Response) {
 export const adminService = {
   async listOrders(): Promise<{ orders: unknown[]; error?: string }> {
     try {
-      const response = await fetch('/api/admin/list-orders', { headers: await authHeaders() });
+      const response = await fetch(`${ADMIN_API}?op=list-orders`, { headers: await authHeaders() });
       const data = await parseJson(response);
       if (!response.ok) return { orders: [], error: data?.error || `HTTP ${response.status}` };
       return { orders: (data.orders as unknown[]) ?? [] };
@@ -41,10 +43,10 @@ export const adminService = {
     markShipped?: boolean;
   }): Promise<{ error?: string }> {
     try {
-      const response = await fetch('/api/admin/update-order', {
-        method: 'PATCH',
+      const response = await fetch(ADMIN_API, {
+        method: 'POST',
         headers: await authHeaders(),
-        body: JSON.stringify(body),
+        body: JSON.stringify({ op: 'update-order', ...body }),
       });
       const data = await parseJson(response);
       if (!response.ok) return { error: data?.error || `HTTP ${response.status}` };
@@ -56,10 +58,10 @@ export const adminService = {
 
   async deleteOrder(orderId: string): Promise<{ error?: string }> {
     try {
-      const response = await fetch('/api/admin/delete-order', {
+      const response = await fetch(ADMIN_API, {
         method: 'POST',
         headers: await authHeaders(),
-        body: JSON.stringify({ orderId }),
+        body: JSON.stringify({ op: 'delete-order', orderId }),
       });
       const data = await parseJson(response);
       if (!response.ok) return { error: data?.error || `HTTP ${response.status}` };
@@ -69,15 +71,152 @@ export const adminService = {
     }
   },
 
+  async listProducts(): Promise<{ products: unknown[]; error?: string }> {
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      const response = await fetch(`${ADMIN_API}?op=list-products`, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      const data = await parseJson(response);
+      if (!response.ok) return { products: [], error: data?.error || `HTTP ${response.status}` };
+      return { products: (data.products as unknown[]) ?? [] };
+    } catch (e) {
+      return { products: [], error: e instanceof Error ? e.message : 'Failed to load products' };
+    }
+  },
+
+  async getAdminProduct(productId: number): Promise<{ product?: unknown; storageObjectPrefix?: string; error?: string }> {
+    try {
+      const response = await fetch(ADMIN_API, {
+        method: 'POST',
+        headers: await authHeaders(),
+        body: JSON.stringify({ op: 'get-product', productId }),
+      });
+      const data = await parseJson(response);
+      if (!response.ok) return { error: data?.error || `HTTP ${response.status}` };
+      return { product: data.product, storageObjectPrefix: data.storageObjectPrefix as string };
+    } catch (e) {
+      return { error: e instanceof Error ? e.message : 'Failed to load product' };
+    }
+  },
+
+  async updateProduct(body: Record<string, unknown>): Promise<{ product?: unknown; error?: string }> {
+    try {
+      const response = await fetch(ADMIN_API, {
+        method: 'POST',
+        headers: await authHeaders(),
+        body: JSON.stringify({ op: 'update-product', ...body }),
+      });
+      const data = await parseJson(response);
+      if (!response.ok) return { error: data?.error || `HTTP ${response.status}` };
+      return { product: data.product };
+    } catch (e) {
+      return { error: e instanceof Error ? e.message : 'Update failed' };
+    }
+  },
+
+  async deleteProductListing(productId: number): Promise<{ error?: string }> {
+    try {
+      const response = await fetch(ADMIN_API, {
+        method: 'POST',
+        headers: await authHeaders(),
+        body: JSON.stringify({ op: 'delete-product', productId }),
+      });
+      const data = await parseJson(response);
+      if (!response.ok) return { error: data?.error || `HTTP ${response.status}` };
+      return {};
+    } catch (e) {
+      return { error: e instanceof Error ? e.message : 'Delete failed' };
+    }
+  },
+
+  async listProductImages(productId: number): Promise<{ files: { name: string; path: string; publicUrl: string }[]; prefix?: string; error?: string }> {
+    try {
+      const response = await fetch(ADMIN_API, {
+        method: 'POST',
+        headers: await authHeaders(),
+        body: JSON.stringify({ op: 'product-images-list', productId }),
+      });
+      const data = await parseJson(response);
+      if (!response.ok) return { files: [], error: data?.error || `HTTP ${response.status}` };
+      return { files: (data.files as { name: string; path: string; publicUrl: string }[]) || [], prefix: data.prefix as string };
+    } catch (e) {
+      return { files: [], error: e instanceof Error ? e.message : 'List failed' };
+    }
+  },
+
+  async uploadProductImageBase64(body: {
+    productId: number;
+    fileName: string;
+    contentType: string;
+    dataBase64: string;
+  }): Promise<{ path?: string; publicUrl?: string; error?: string }> {
+    try {
+      const response = await fetch(ADMIN_API, {
+        method: 'POST',
+        headers: await authHeaders(),
+        body: JSON.stringify({ op: 'product-image-upload', ...body }),
+      });
+      const data = await parseJson(response);
+      if (!response.ok) return { error: data?.error || `HTTP ${response.status}` };
+      return { path: data.path, publicUrl: data.publicUrl };
+    } catch (e) {
+      return { error: e instanceof Error ? e.message : 'Upload failed' };
+    }
+  },
+
+  async deleteProductImage(productId: number, fileName: string): Promise<{ error?: string }> {
+    try {
+      const response = await fetch(ADMIN_API, {
+        method: 'POST',
+        headers: await authHeaders(),
+        body: JSON.stringify({ op: 'product-image-delete', productId, fileName }),
+      });
+      const data = await parseJson(response);
+      if (!response.ok) return { error: data?.error || `HTTP ${response.status}` };
+      return {};
+    } catch (e) {
+      return { error: e instanceof Error ? e.message : 'Delete failed' };
+    }
+  },
+
+  async reorderProductImages(productId: number, orderedFileNames: string[]): Promise<{ error?: string }> {
+    try {
+      const response = await fetch(ADMIN_API, {
+        method: 'POST',
+        headers: await authHeaders(),
+        body: JSON.stringify({ op: 'product-images-reorder', productId, orderedFileNames }),
+      });
+      const data = await parseJson(response);
+      if (!response.ok) return { error: data?.error || `HTTP ${response.status}` };
+      return {};
+    } catch (e) {
+      return { error: e instanceof Error ? e.message : 'Reorder failed' };
+    }
+  },
+
   async setPrimaryImages(body?: {
     overwrite?: boolean;
     limit?: number;
-  }): Promise<{ data?: any; error?: string }> {
+  }): Promise<{
+    data?: {
+      scanned?: number;
+      updated?: number;
+      skipped?: number;
+      missing?: number;
+    };
+    error?: string;
+  }> {
     try {
-      const response = await fetch('/api/admin/set-primary-images', {
+      const response = await fetch(ADMIN_API, {
         method: 'POST',
         headers: await authHeaders(),
-        body: JSON.stringify(body || {}),
+        body: JSON.stringify({ op: 'set-primary-images', ...(body || {}) }),
       });
       const data = await parseJson(response);
       if (!response.ok) return { error: data?.error || `HTTP ${response.status}` };

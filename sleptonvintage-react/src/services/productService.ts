@@ -13,6 +13,8 @@ export interface Product {
   // stored in cents
   price: number;
   size: string;
+  /** URL-safe folder segment: `images/products/<storage_prefix>/…`; null → use numeric `id` */
+  storage_prefix?: string | null;
   /**
    * Primary image for listing pages.
    * Store either:
@@ -24,6 +26,24 @@ export interface Product {
   category: 'shirts' | 'sweaters' | 'hoodies' | 'jackets' | 'pants' | 'shorts';
   created_at?: string;
   updated_at?: string;
+}
+
+/** Slug for `storage_prefix`: lowercase, hyphens, safe for Storage paths. */
+export function slugifyForStoragePrefix(raw: string): string {
+  const s = raw
+    .toLowerCase()
+    .trim()
+    .replace(/['"]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 80)
+  return s || 'item'
+}
+
+export function getProductStorageObjectPrefix(product: Pick<Product, 'id' | 'storage_prefix'>): string {
+  const seg = (product.storage_prefix || '').trim() || String(product.id)
+  return `products/${seg}`
 }
 
 export function getPublicProductImageUrlFromPath(path: string): string {
@@ -42,9 +62,9 @@ export function getPrimaryProductImageUrl(product: Pick<Product, 'image'>): stri
   return raw
 }
 
-/** Public URLs under `images/products/{id}/`; sorted by filename (lexical). Errors → []. */
-export async function getProductGalleryPublicUrls(productId: number): Promise<string[]> {
-  const prefix = `products/${productId}`
+/** Public URLs under `images/products/<storage_prefix|id>/`; sorted by filename (lexical). Errors → []. */
+export async function getProductGalleryPublicUrls(product: Pick<Product, 'id' | 'storage_prefix'>): Promise<string[]> {
+  const prefix = getProductStorageObjectPrefix(product)
 
   const { data: entries, error } = await supabase.storage.from(PRODUCT_IMAGES_BUCKET).list(prefix, {
     limit: 100,
@@ -69,30 +89,37 @@ export async function getProductGalleryPublicUrls(productId: number): Promise<st
 }
 
 /** Gallery from storage first; otherwise single `fallback` URL if present */
-export async function resolveProductImageUrls(productId: number, fallback: string | null): Promise<string[]> {
-  const fromStorage = await getProductGalleryPublicUrls(productId)
+export async function resolveProductImageUrls(
+  product: Pick<Product, 'id' | 'storage_prefix' | 'image'>,
+  fallback: string | null
+): Promise<string[]> {
+  const fromStorage = await getProductGalleryPublicUrls(product)
   if (fromStorage.length > 0) return fromStorage
   if (fallback) return [fallback]
   return []
 }
 
-const listingThumbPromises = new Map<number, Promise<string>>()
+const listingThumbPromises = new Map<string, Promise<string>>()
+
+function listingThumbCacheKey(product: Pick<Product, 'id' | 'storage_prefix' | 'image'>): string {
+  return `${product.id}|${(product.storage_prefix || '').trim()}|${(product.image || '').trim()}`
+}
 
 /**
- * Thumbnail for grids/cart: first Storage object under `products/{id}/` (filename order),
- * otherwise `products.image` (URL or Storage path). Cached per product id for one page load.
+ * Thumbnail for grids/cart: first Storage object (filename order), else `products.image`.
  */
-export function getListingThumbnailUrl(product: Pick<Product, 'id' | 'image'>): Promise<string> {
-  const existing = listingThumbPromises.get(product.id)
+export function getListingThumbnailUrl(product: Pick<Product, 'id' | 'storage_prefix' | 'image'>): Promise<string> {
+  const key = listingThumbCacheKey(product)
+  const existing = listingThumbPromises.get(key)
   if (existing) return existing
 
   const p = (async () => {
-    const gallery = await getProductGalleryPublicUrls(product.id)
+    const gallery = await getProductGalleryPublicUrls(product)
     if (gallery.length > 0) return gallery[0]
     return getPrimaryProductImageUrl(product)
   })()
 
-  listingThumbPromises.set(product.id, p)
+  listingThumbPromises.set(key, p)
   return p
 }
 

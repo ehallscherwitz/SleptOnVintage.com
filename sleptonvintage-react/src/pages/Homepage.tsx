@@ -1,67 +1,78 @@
 // Homepage component - converted from homepage.html
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Header from '../components/Header';
+import { ProductThumbnail } from '../components/ProductThumbnail';
+import { productService, type Product } from '../services/productService';
 
-interface Category {
-  name: string;
-  image: string;
-  path: string;
+const CATEGORY_TILES: { name: string; path: string; slug: Product['category'] }[] = [
+  { name: 'Shirts', path: '/shirts', slug: 'shirts' },
+  { name: 'Sweaters', path: '/sweaters', slug: 'sweaters' },
+  { name: 'Hoodies', path: '/hoodies', slug: 'hoodies' },
+  { name: 'Jackets', path: '/jackets', slug: 'jackets' },
+  { name: 'Pants', path: '/pants', slug: 'pants' },
+  { name: 'Shorts', path: '/shorts', slug: 'shorts' },
+];
+
+function pickRandomListingProduct(products: Product[], slug: Product['category']): Product | null {
+  const inCategory = products.filter((p) => p.category === slug);
+  const available = inCategory.filter((p) => p.available);
+  const pool = available.length > 0 ? available : inCategory;
+  if (pool.length === 0) return null;
+  return pool[Math.floor(Math.random() * pool.length)];
 }
 
 const Homepage: React.FC = () => {
-  const categories: Category[] = [
-    {
-      name: "Shirts",
-      image: "https://ogvzymvmzhhfccgpjjaf.supabase.co/storage/v1/object/public/product-images/Shirt1.jpg",
-      path: "/shirts"
-    },
-    {
-      name: "Sweaters", 
-      image: "https://ogvzymvmzhhfccgpjjaf.supabase.co/storage/v1/object/public/product-images/Sweater1.jpeg",
-      path: "/sweaters"
-    },
-    {
-      name: "Hoodies",
-      image: "https://ogvzymvmzhhfccgpjjaf.supabase.co/storage/v1/object/public/product-images/Hoodie1.jpeg", 
-      path: "/hoodies"
-    },
-    {
-      name: "Jackets",
-      image: "https://ogvzymvmzhhfccgpjjaf.supabase.co/storage/v1/object/public/product-images/Jacket1.jpeg",
-      path: "/jackets"
-    },
-    {
-      name: "Pants",
-      image: "https://ogvzymvmzhhfccgpjjaf.supabase.co/storage/v1/object/public/product-images/Pants1.jpeg",
-      path: "/pants"
-    },
-    {
-      name: "Shorts",
-      image: "https://ogvzymvmzhhfccgpjjaf.supabase.co/storage/v1/object/public/product-images/Shorts1.jpg",
-      path: "/shorts"
-    }
-  ];
+  const [sampleByCategory, setSampleByCategory] = useState<
+    Partial<Record<Product['category'], Product | null>>
+  >({});
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const all = await productService.getAllProducts();
+        if (cancelled) return;
+        const next: Partial<Record<Product['category'], Product | null>> = {};
+        for (const { slug } of CATEGORY_TILES) {
+          next[slug] = pickRandomListingProduct(all, slug);
+        }
+        setSampleByCategory(next);
+      } catch (e) {
+        console.error('Homepage category thumbnails:', e);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <div>
       <Header />
       <div className="subheader">FREE SHIPPING ON ALL ORDERS</div>
       <div className="category-grid">
-        {categories.map((category) => (
-          <Link key={category.name} to={category.path}>
-            <button className="category">
-              <div className="thumbnail-row">
-                <img className="thumbnail" src={category.image} alt={category.name} />
-              </div>
-              <div className="category-info-row">
-                <div className="category-title">
-                  {category.name} <i className="fa-solid fa-arrow-right"></i>
+        {CATEGORY_TILES.map(({ name, path, slug }) => {
+          const sample = sampleByCategory[slug];
+          return (
+            <Link key={name} to={path}>
+              <button type="button" className="category">
+                <div className="thumbnail-row">
+                  {sample ? (
+                    <ProductThumbnail product={sample} className="thumbnail" alt={name} />
+                  ) : (
+                    <div className="category-thumbnail-placeholder thumbnail" aria-hidden />
+                  )}
                 </div>
-              </div>
-            </button>
-          </Link>
-        ))}
+                <div className="category-info-row">
+                  <div className="category-title">
+                    {name} <i className="fa-solid fa-arrow-right"></i>
+                  </div>
+                </div>
+              </button>
+            </Link>
+          );
+        })}
       </div>
     </div>
   );
