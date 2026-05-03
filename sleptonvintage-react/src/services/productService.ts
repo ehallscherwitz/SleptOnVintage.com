@@ -42,16 +42,16 @@ export function getPrimaryProductImageUrl(product: Pick<Product, 'image'>): stri
   return raw
 }
 
-/** Public URLs under `images/products/{id}/`; sorted by upload time when available. Errors → []. */
+/** Public URLs under `images/products/{id}/`; sorted by filename (lexical). Errors → []. */
 export async function getProductGalleryPublicUrls(productId: number): Promise<string[]> {
   const prefix = `products/${productId}`
 
   const { data: entries, error } = await supabase.storage.from(PRODUCT_IMAGES_BUCKET).list(prefix, {
     limit: 100,
     offset: 0,
-    // This is the closest thing to "the order I uploaded them in".
-    // If Storage doesn't support this sort column in your project, we can fall back to filename ordering.
-    sortBy: { column: 'created_at', order: 'asc' },
+    // Dashboard bulk uploads often share the same second; filename order is the reliable way to
+    // preserve "sequence" — use names like 01.webp, 02.webp before dragging many files at once.
+    sortBy: { column: 'name', order: 'asc' },
   })
 
   if (error) {
@@ -59,7 +59,9 @@ export async function getProductGalleryPublicUrls(productId: number): Promise<st
     return []
   }
 
-  const files = (entries || []).filter((e) => e?.id && e.name && !IGNORED_STORAGE_NAMES.has(e.name))
+  const files = (entries || [])
+    .filter((e) => e?.id && e.name && !IGNORED_STORAGE_NAMES.has(e.name))
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }))
 
   return files.map((f) =>
     supabase.storage.from(PRODUCT_IMAGES_BUCKET).getPublicUrl(`${prefix}/${f.name}`).data.publicUrl
@@ -72,6 +74,26 @@ export async function resolveProductImageUrls(productId: number, fallback: strin
   if (fromStorage.length > 0) return fromStorage
   if (fallback) return [fallback]
   return []
+}
+
+const listingThumbPromises = new Map<number, Promise<string>>()
+
+/**
+ * Thumbnail for grids/cart: first Storage object under `products/{id}/` (filename order),
+ * otherwise `products.image` (URL or Storage path). Cached per product id for one page load.
+ */
+export function getListingThumbnailUrl(product: Pick<Product, 'id' | 'image'>): Promise<string> {
+  const existing = listingThumbPromises.get(product.id)
+  if (existing) return existing
+
+  const p = (async () => {
+    const gallery = await getProductGalleryPublicUrls(product.id)
+    if (gallery.length > 0) return gallery[0]
+    return getPrimaryProductImageUrl(product)
+  })()
+
+  listingThumbPromises.set(product.id, p)
+  return p
 }
 
 export const productService = {

@@ -4,7 +4,6 @@ import { requireAdmin } from '../adminAuth.js';
 type StorageEntry = {
   name: string;
   id?: string | null;
-  created_at?: string | null;
 };
 
 const IGNORED_STORAGE_NAMES = new Set(['.emptyFolderPlaceholder', '.gitkeep']);
@@ -75,17 +74,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const files = ((entries || []) as StorageEntry[])
       .filter((e) => e?.name && e?.id && !IGNORED_STORAGE_NAMES.has(e.name))
-      .sort((a, b) => {
-        // Prefer chronological by created_at; fall back to name ordering.
-        const at = a.created_at ? Date.parse(a.created_at) : NaN;
-        const bt = b.created_at ? Date.parse(b.created_at) : NaN;
-        const aOk = Number.isFinite(at);
-        const bOk = Number.isFinite(bt);
-        if (aOk && bOk) return at - bt;
-        if (aOk) return -1;
-        if (bOk) return 1;
-        return a.name.localeCompare(b.name);
-      });
+      // Match storefront gallery: lexical filename order (bulk uploads rarely preserve true upload order).
+      .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
 
     const first = files[0];
     if (!first) {

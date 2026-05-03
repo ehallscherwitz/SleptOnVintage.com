@@ -2,8 +2,7 @@
 -- Bucket layout: bucket `images`, objects under prefix `products/{product_id}/{filename}`
 -- Example: images/products/1/01.webp, images/products/1/02.webp
 --
--- If you want the gallery to match "upload order", we attempt to sort by Storage `created_at`.
--- If your project doesn't support sorting by `created_at` on list(), name files like 01, 02, 03… as a reliable fallback.
+-- Gallery order is by filename (lexical). For predictable order after bulk upload, name files 01.webp, 02.webp, …
 --
 -- Run in Supabase Dashboard → SQL Editor after creating the bucket (below).
 

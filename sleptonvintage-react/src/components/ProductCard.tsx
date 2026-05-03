@@ -2,7 +2,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
-import { getPrimaryProductImageUrl, type Product } from '../services/productService';
+import { ProductThumbnail } from './ProductThumbnail';
+import type { Product } from '../services/productService';
 import { formatUsdFromCents } from '../utils/money';
 
 interface ProductCardProps {
@@ -35,11 +36,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         onClick={handleProductClick}
       >
         <div className="thumbnail-row">
-          <img 
-            className="thumbnail" 
-            src={getPrimaryProductImageUrl(product)} 
-            alt={product.name}
-          />
+          <ProductThumbnail product={product} className="thumbnail" />
         </div>
         
         <div className="product-info-row">

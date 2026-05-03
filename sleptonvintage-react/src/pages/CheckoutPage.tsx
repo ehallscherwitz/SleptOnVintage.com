@@ -5,7 +5,7 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { checkoutService, type CheckoutCartItem, type CustomerInfo, type ShippingInfo } from '../services/checkoutService';
 import { formatUsdFromCents } from '../utils/money';
-import { getPrimaryProductImageUrl } from '../services/productService';
+import { ProductThumbnail } from '../components/ProductThumbnail';
 
 declare global {
   interface Window {
@@ -478,11 +478,7 @@ export const CheckoutPage: React.FC = () => {
               <h2>Order summary</h2>
               {cartItems.map((item) => (
                 <div key={item.id} className="checkout-line-item">
-                  {getPrimaryProductImageUrl(item.product) ? (
-                    <img className="checkout-line-thumb" src={getPrimaryProductImageUrl(item.product)} alt="" />
-                  ) : (
-                    <div className="checkout-line-thumb" />
-                  )}
+                  <ProductThumbnail product={item.product} className="checkout-line-thumb" alt="" />
                   <div className="checkout-line-meta">
                     <p className="checkout-line-name">{item.product.name}</p>
                     <p className="checkout-line-detail">
