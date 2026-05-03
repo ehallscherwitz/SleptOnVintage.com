@@ -2,13 +2,16 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import Header from '../components/Header';
+import { useAuth } from '../context/AuthContext';
 import { getPrimaryProductImageUrl, productService, resolveProductImageUrls, type Product } from '../services/productService';
 import { useCart } from '../context/CartContext';
 import { formatUsdFromCents } from '../utils/money';
+import { isAdminEmail } from '../utils/adminAccess';
 
 const ProductDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { addToCart, cart } = useCart();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
@@ -224,6 +227,12 @@ const ProductDetailPage: React.FC = () => {
               >
                 Back to {product.category.charAt(0).toUpperCase() + product.category.slice(1)}
               </button>
+
+              {isAdminEmail(user?.email) && (
+                <Link to={`/admin/products/${product.id}`} className="admin-edit-detail-btn">
+                  Edit listing
+                </Link>
+              )}
             </div>
           </div>
         </div>

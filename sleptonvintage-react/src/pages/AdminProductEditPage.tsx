@@ -1,9 +1,13 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import Header from '../components/Header';
 import { useAuth } from '../context/AuthContext';
 import { adminService } from '../services/adminService';
-import { slugifyForStoragePrefix, type Product } from '../services/productService';
+import {
+  getPrimaryProductImageUrl,
+  resolveProductImageUrls,
+  type Product,
+} from '../services/productService';
 import { isAdminEmail } from '../utils/adminAccess';
 
 type GalleryFile = { name: string; path: string; publicUrl: string };
@@ -34,8 +38,8 @@ const AdminProductEditPage: React.FC = () => {
   const [priceDollars, setPriceDollars] = useState('');
   const [category, setCategory] = useState<Product['category']>('shirts');
   const [available, setAvailable] = useState(true);
-  const [storagePrefix, setStoragePrefix] = useState('');
   const [files, setFiles] = useState<GalleryFile[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [orderDirty, setOrderDirty] = useState(false);
 
@@ -43,6 +47,13 @@ const AdminProductEditPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const alertsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if ((msg || err) && alertsRef.current) {
+      alertsRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [msg, err]);
 
   const loadImages = useCallback(async () => {
     if (!Number.isFinite(productId)) return;
@@ -77,7 +88,8 @@ const AdminProductEditPage: React.FC = () => {
     setPriceDollars((row.price / 100).toFixed(2));
     setCategory(row.category);
     setAvailable(row.available);
-    setStoragePrefix((row.storage_prefix || '').trim());
+    const previews = await resolveProductImageUrls(row, getPrimaryProductImageUrl(row));
+    setPreviewUrls(previews);
     await loadImages();
     setLoading(false);
   }, [productId, loadImages]);
@@ -93,29 +105,35 @@ const AdminProductEditPage: React.FC = () => {
     setSaving(true);
     setMsg(null);
     setErr(null);
-    const price = Math.round(parseFloat(priceDollars) * 100);
-    if (!Number.isFinite(price) || price < 0) {
-      setErr('Invalid price');
+    try {
+      const price = Math.round(parseFloat(priceDollars) * 100);
+      if (!Number.isFinite(price) || price < 0) {
+        setErr('Invalid price');
+        return;
+      }
+      const { product: updated, error: e } = await adminService.updateProduct({
+        id: product.id,
+        name,
+        size,
+        priceCents: price,
+        category,
+        available,
+      });
+      if (e) {
+        setErr(e);
+      } else {
+        setMsg('Saved listing details.');
+        const u = updated as Product;
+        setProduct(u);
+        setStorageObjectPrefix(`products/${(u.storage_prefix || '').trim() || String(u.id)}`);
+        const previews = await resolveProductImageUrls(u, getPrimaryProductImageUrl(u));
+        setPreviewUrls(previews);
+        void loadImages();
+      }
+    } catch (ex) {
+      setErr(ex instanceof Error ? ex.message : 'Save failed');
+    } finally {
       setSaving(false);
-      return;
-    }
-    const { product: updated, error: e } = await adminService.updateProduct({
-      id: product.id,
-      name,
-      size,
-      priceCents: price,
-      category,
-      available,
-      storage_prefix: storagePrefix.trim() || null,
-    });
-    setSaving(false);
-    if (e) setErr(e);
-    else {
-      setMsg('Saved listing details.');
-      const u = updated as Product;
-      setProduct(u);
-      setStorageObjectPrefix(`products/${(u.storage_prefix || '').trim() || String(u.id)}`);
-      void loadImages();
     }
   };
 
@@ -124,15 +142,20 @@ const AdminProductEditPage: React.FC = () => {
     setSaving(true);
     setMsg(null);
     setErr(null);
-    const { error: e } = await adminService.reorderProductImages(
-      productId,
-      files.map((f) => f.name)
-    );
-    setSaving(false);
-    if (e) setErr(e);
-    else {
-      setMsg('Photo order saved (files renamed 01, 02, …).');
-      void loadImages();
+    try {
+      const { error: e } = await adminService.reorderProductImages(
+        productId,
+        files.map((f) => f.name)
+      );
+      if (e) setErr(e);
+      else {
+        setMsg('Photo order saved (files renamed 01, 02, …).');
+        void loadImages();
+      }
+    } catch (ex) {
+      setErr(ex instanceof Error ? ex.message : 'Reorder failed');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -145,23 +168,30 @@ const AdminProductEditPage: React.FC = () => {
       input.name
     );
     const reader = new FileReader();
-    reader.onload = async () => {
-      const res = String(reader.result || '');
-      const base64 = res.includes(',') ? res.split(',')[1] : res;
-      setSaving(true);
-      setErr(null);
-      const { error: upErr } = await adminService.uploadProductImageBase64({
-        productId,
-        fileName,
-        contentType: input.type || 'application/octet-stream',
-        dataBase64: base64,
-      });
-      setSaving(false);
-      if (upErr) setErr(upErr);
-      else {
-        setMsg(`Uploaded ${fileName}`);
-        void loadImages();
-      }
+    reader.onload = () => {
+      void (async () => {
+        const res = String(reader.result || '');
+        const base64 = res.includes(',') ? res.split(',')[1] : res;
+        setSaving(true);
+        setErr(null);
+        try {
+          const { error: upErr } = await adminService.uploadProductImageBase64({
+            productId,
+            fileName,
+            contentType: input.type || 'application/octet-stream',
+            dataBase64: base64,
+          });
+          if (upErr) setErr(upErr);
+          else {
+            setMsg(`Uploaded ${fileName}`);
+            void loadImages();
+          }
+        } catch (ex) {
+          setErr(ex instanceof Error ? ex.message : 'Upload failed');
+        } finally {
+          setSaving(false);
+        }
+      })();
     };
     reader.readAsDataURL(input);
   };
@@ -170,12 +200,17 @@ const AdminProductEditPage: React.FC = () => {
     if (!window.confirm(`Delete ${fileName} from Storage?`)) return;
     setSaving(true);
     setErr(null);
-    const { error: e } = await adminService.deleteProductImage(productId, fileName);
-    setSaving(false);
-    if (e) setErr(e);
-    else {
-      setMsg(`Deleted ${fileName}`);
-      void loadImages();
+    try {
+      const { error: e } = await adminService.deleteProductImage(productId, fileName);
+      if (e) setErr(e);
+      else {
+        setMsg(`Deleted ${fileName}`);
+        void loadImages();
+      }
+    } catch (ex) {
+      setErr(ex instanceof Error ? ex.message : 'Delete failed');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -187,25 +222,45 @@ const AdminProductEditPage: React.FC = () => {
     if (!ok) return;
     setSaving(true);
     setErr(null);
-    const { error: e } = await adminService.deleteProductListing(product.id);
-    setSaving(false);
-    if (e) setErr(e);
-    else navigate('/admin/products');
+    try {
+      const { error: e } = await adminService.deleteProductListing(product.id);
+      if (e) setErr(e);
+      else navigate('/admin/products');
+    } catch (ex) {
+      setErr(ex instanceof Error ? ex.message : 'Delete failed');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const onDragStart = (i: number) => setDragIdx(i);
+  const moveInGallery = (from: number, to: number) => {
+    if (from === to || from < 0 || to < 0 || from >= files.length || to >= files.length) return;
+    const next = [...files];
+    const [removed] = next.splice(from, 1);
+    next.splice(to, 0, removed);
+    setFiles(next);
+    setOrderDirty(true);
+  };
+
+  const onDragStart = (e: React.DragEvent, i: number) => {
+    e.dataTransfer.effectAllowed = 'move';
+    try {
+      e.dataTransfer.setData('text/plain', String(i));
+    } catch {
+      /* Safari may throw for custom data in some cases */
+    }
+    setDragIdx(i);
+  };
   const onDragOver = (e: React.DragEvent) => {
     e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
   };
   const onDrop = (to: number) => {
     if (dragIdx === null) return;
-    const next = [...files];
-    const [removed] = next.splice(dragIdx, 1);
-    next.splice(to, 0, removed);
-    setFiles(next);
+    moveInGallery(dragIdx, to);
     setDragIdx(null);
-    setOrderDirty(true);
   };
+  const onDragEnd = () => setDragIdx(null);
 
   if (authLoading) {
     return (
@@ -274,12 +329,20 @@ const AdminProductEditPage: React.FC = () => {
           </div>
         </div>
 
-        {msg && <div className="checkout-alert checkout-alert--info">{msg}</div>}
-        {err && <div className="checkout-alert checkout-alert--error">{err}</div>}
+        <div ref={alertsRef} className="admin-product-edit-alerts">
+          {msg && <div className="checkout-alert checkout-alert--info">{msg}</div>}
+          {err && <div className="checkout-alert checkout-alert--error">{err}</div>}
+        </div>
 
         <section className="admin-product-section">
           <h2 className="admin-product-section-title">Details</h2>
-          <div className="admin-product-form">
+          <form
+            className="admin-product-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void saveDetails();
+            }}
+          >
             <label className="admin-label">Name</label>
             <input className="checkout-input" value={name} onChange={(e) => setName(e.target.value)} />
 
@@ -302,33 +365,18 @@ const AdminProductEditPage: React.FC = () => {
               <input type="checkbox" checked={available} onChange={(e) => setAvailable(e.target.checked)} /> Available for sale
             </label>
 
-            <label className="admin-label">Storage folder slug (optional)</label>
-            <div className="admin-product-inline">
-              <input
-                className="checkout-input"
-                value={storagePrefix}
-                onChange={(e) => setStoragePrefix(e.target.value)}
-                placeholder={`default: ${product.id}`}
-              />
-              <button
-                type="button"
-                className="checkout-btn-secondary"
-                onClick={() => setStoragePrefix(slugifyForStoragePrefix(name))}
-              >
-                Slug from title
-              </button>
-            </div>
-            <p className="admin-hint">Photos live at <code className="admin-code">images/products/&lt;slug-or-id&gt;/</code>. Changing this does not move existing files—you must re-upload or move them in Storage.</p>
-
-            <button type="button" className="checkout-btn-primary" disabled={saving} onClick={() => void saveDetails()}>
+            <button type="submit" className="checkout-btn-primary" disabled={saving}>
               {saving ? 'Saving…' : 'Save details'}
             </button>
-          </div>
+          </form>
         </section>
 
         <section className="admin-product-section">
           <h2 className="admin-product-section-title">Photos</h2>
-          <p className="admin-hint">Drag tiles to reorder, then click &quot;Save photo order&quot;. First filename (01…) is the storefront thumbnail. Max ~4&nbsp;MB per upload.</p>
+          <p className="admin-hint">
+            Reorder photos in the list below (drag a tile by its edges, or use ↑ ↓ on each tile), then click &quot;Save photo order&quot;. First image becomes the
+            storefront thumbnail. Max ~4&nbsp;MB per upload.
+          </p>
           <div className="admin-product-upload-row">
             <label className="checkout-btn-secondary" style={{ cursor: saving ? 'not-allowed' : 'pointer' }}>
               Upload image
@@ -339,20 +387,39 @@ const AdminProductEditPage: React.FC = () => {
             </button>
           </div>
 
-          {files.length === 0 ? (
-            <p className="admin-muted">No images in this folder yet.</p>
-          ) : (
+          {files.length > 0 ? (
             <div className="admin-product-gallery">
               {files.map((f, i) => (
                 <div
                   key={f.path}
                   className="admin-product-tile"
                   draggable
-                  onDragStart={() => onDragStart(i)}
+                  onDragStart={(e) => onDragStart(e, i)}
                   onDragOver={onDragOver}
                   onDrop={() => onDrop(i)}
+                  onDragEnd={onDragEnd}
                 >
-                  <img src={f.publicUrl} alt="" />
+                  <div className="admin-product-tile-reorder">
+                    <button
+                      type="button"
+                      className="admin-product-tile-move"
+                      disabled={saving || i === 0}
+                      aria-label="Move photo earlier in order"
+                      onClick={() => moveInGallery(i, i - 1)}
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      className="admin-product-tile-move"
+                      disabled={saving || i === files.length - 1}
+                      aria-label="Move photo later in order"
+                      onClick={() => moveInGallery(i, i + 1)}
+                    >
+                      ↓
+                    </button>
+                  </div>
+                  <img src={f.publicUrl} alt="" loading="lazy" draggable={false} className="admin-product-tile-img" />
                   <div className="admin-product-tile-meta">{f.name}</div>
                   <button type="button" className="admin-btn-small admin-btn-danger" disabled={saving} onClick={() => void removePhoto(f.name)}>
                     Remove
@@ -360,6 +427,23 @@ const AdminProductEditPage: React.FC = () => {
                 </div>
               ))}
             </div>
+          ) : previewUrls.length > 0 ? (
+            <>
+              <p className="admin-hint">
+                No image files in the Storage folder for this listing yet. The site is still showing these (from Storage or the primary image field). Upload
+                images above to manage them here.
+              </p>
+              <div className="admin-product-gallery">
+                {previewUrls.map((url, i) => (
+                  <div key={`${i}-${url}`} className="admin-product-tile admin-product-tile--static">
+                    <img src={url} alt="" loading="lazy" />
+                    <div className="admin-product-tile-meta">Preview {i + 1}</div>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <p className="admin-muted">No images in this folder yet. Upload to add photos.</p>
           )}
         </section>
 

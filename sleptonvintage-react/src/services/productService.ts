@@ -80,7 +80,7 @@ export async function getProductGalleryPublicUrls(product: Pick<Product, 'id' | 
   }
 
   const files = (entries || [])
-    .filter((e) => e?.id && e.name && !IGNORED_STORAGE_NAMES.has(e.name))
+    .filter((e) => Boolean(e?.name) && !IGNORED_STORAGE_NAMES.has(e.name))
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }))
 
   return files.map((f) =>

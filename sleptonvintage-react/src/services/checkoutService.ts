@@ -100,7 +100,6 @@ export const checkoutService = {
             price,
             size,
             image,
-            storage_prefix,
             category
           )
         `)

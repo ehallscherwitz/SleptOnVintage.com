@@ -70,7 +70,7 @@ async function handleListOrders(_req: VercelRequest, res: VercelResponse, auth: 
 async function handleListProducts(_req: VercelRequest, res: VercelResponse, auth: AdminOk) {
   const { data, error } = await auth.service
     .from('products')
-    .select('id, name, price, size, category, available, image, storage_prefix, created_at')
+    .select('id, name, price, size, category, available, image, created_at')
     .order('id', { ascending: true })
     .limit(2000);
   if (error) return res.status(500).json({ error: error.message });
@@ -136,9 +136,10 @@ async function handleGetProduct(req: VercelRequest, res: VercelResponse, auth: A
   if (error) return res.status(500).json({ error: error.message });
   if (!data) return res.status(404).json({ error: 'Not found' });
 
+  const row = data as { id: number; storage_prefix?: string | null };
   const storageObjectPrefix = productStorageObjectPrefix({
-    id: data.id as number,
-    storage_prefix: data.storage_prefix as string | null,
+    id: row.id,
+    storage_prefix: row.storage_prefix ?? null,
   });
   return res.status(200).json({ product: data, storageObjectPrefix });
 }
@@ -169,11 +170,6 @@ async function handleUpdateProduct(req: VercelRequest, res: VercelResponse, auth
     patch.category = c;
   }
   if (typeof body.available === 'boolean') patch.available = body.available;
-  if (body.storage_prefix === null) patch.storage_prefix = null;
-  else if (typeof body.storage_prefix === 'string') {
-    const s = body.storage_prefix.trim().toLowerCase().replace(/[^a-z0-9-]/g, '');
-    patch.storage_prefix = s ? s.slice(0, 80) : null;
-  }
   if (body.image === null) patch.image = null;
   else if (typeof body.image === 'string') patch.image = body.image.trim() || null;
 
@@ -202,22 +198,16 @@ async function handleDeleteProduct(req: VercelRequest, res: VercelResponse, auth
     });
   }
 
-  const { data: row, error: getErr } = await auth.service
-    .from('products')
-    .select('id, storage_prefix')
-    .eq('id', productId)
-    .maybeSingle();
+  const { data: row, error: getErr } = await auth.service.from('products').select('id').eq('id', productId).maybeSingle();
   if (getErr) return res.status(500).json({ error: getErr.message });
   if (!row) return res.status(404).json({ error: 'Product not found' });
 
   const bucket = (process.env.SUPABASE_PRODUCT_IMAGES_BUCKET || 'images').trim();
-  const prefix = productStorageObjectPrefix({ id: productId, storage_prefix: row.storage_prefix as string | null });
+  const prefixRow = { id: productId, storage_prefix: (row as { storage_prefix?: string | null }).storage_prefix ?? null };
+  const prefix = productStorageObjectPrefix(prefixRow);
 
   try {
-    const names = await listGalleryFileNames(auth.service, bucket, {
-      id: productId,
-      storage_prefix: row.storage_prefix as string | null,
-    });
+    const names = await listGalleryFileNames(auth.service, bucket, prefixRow);
     const paths = names.map((n) => `${prefix}/${n}`);
     if (paths.length > 0) {
       const { error: rmErr } = await auth.service.storage.from(bucket).remove(paths);
@@ -242,24 +232,15 @@ async function handleProductImagesList(req: VercelRequest, res: VercelResponse, 
   const productId = typeof idRaw === 'number' ? idRaw : typeof idRaw === 'string' ? parseInt(idRaw, 10) : NaN;
   if (!Number.isFinite(productId)) return res.status(400).json({ error: 'productId required' });
 
-  const { data: row, error } = await auth.service
-    .from('products')
-    .select('id, storage_prefix')
-    .eq('id', productId)
-    .maybeSingle();
+  const { data: row, error } = await auth.service.from('products').select('id').eq('id', productId).maybeSingle();
   if (error) return res.status(500).json({ error: error.message });
   if (!row) return res.status(404).json({ error: 'Product not found' });
 
   const bucket = (process.env.SUPABASE_PRODUCT_IMAGES_BUCKET || 'images').trim();
-  const prefix = productStorageObjectPrefix({
-    id: productId,
-    storage_prefix: row.storage_prefix as string | null,
-  });
+  const prefixRow = { id: productId, storage_prefix: (row as { storage_prefix?: string | null }).storage_prefix ?? null };
+  const prefix = productStorageObjectPrefix(prefixRow);
   try {
-    const names = await listGalleryFileNames(auth.service, bucket, {
-      id: productId,
-      storage_prefix: row.storage_prefix as string | null,
-    });
+    const names = await listGalleryFileNames(auth.service, bucket, prefixRow);
     const files = publicUrlsForFiles(auth.service, bucket, prefix, names);
     return res.status(200).json({ prefix, files });
   } catch (e: unknown) {
@@ -293,19 +274,13 @@ async function handleProductImageUpload(req: VercelRequest, res: VercelResponse,
     return res.status(413).json({ error: `File too large (max ${MAX_UPLOAD_BYTES} bytes). Compress or resize the image.` });
   }
 
-  const { data: row, error: getErr } = await auth.service
-    .from('products')
-    .select('id, storage_prefix')
-    .eq('id', productId)
-    .maybeSingle();
+  const { data: row, error: getErr } = await auth.service.from('products').select('id').eq('id', productId).maybeSingle();
   if (getErr) return res.status(500).json({ error: getErr.message });
   if (!row) return res.status(404).json({ error: 'Product not found' });
 
   const bucket = (process.env.SUPABASE_PRODUCT_IMAGES_BUCKET || 'images').trim();
-  const prefix = productStorageObjectPrefix({
-    id: productId,
-    storage_prefix: row.storage_prefix as string | null,
-  });
+  const prefixRow = { id: productId, storage_prefix: (row as { storage_prefix?: string | null }).storage_prefix ?? null };
+  const prefix = productStorageObjectPrefix(prefixRow);
   const path = `${prefix}/${fileName}`;
 
   const { error: upErr } = await auth.service.storage.from(bucket).upload(path, buffer, {
@@ -326,19 +301,13 @@ async function handleProductImageDelete(req: VercelRequest, res: VercelResponse,
   const fileName = String(body.fileName || '').trim().replace(/[/\\]/g, '');
   if (!fileName || fileName.includes('..')) return res.status(400).json({ error: 'Invalid fileName' });
 
-  const { data: row, error: getErr } = await auth.service
-    .from('products')
-    .select('id, storage_prefix, image')
-    .eq('id', productId)
-    .maybeSingle();
+  const { data: row, error: getErr } = await auth.service.from('products').select('id, image').eq('id', productId).maybeSingle();
   if (getErr) return res.status(500).json({ error: getErr.message });
   if (!row) return res.status(404).json({ error: 'Product not found' });
 
   const bucket = (process.env.SUPABASE_PRODUCT_IMAGES_BUCKET || 'images').trim();
-  const prefix = productStorageObjectPrefix({
-    id: productId,
-    storage_prefix: row.storage_prefix as string | null,
-  });
+  const prefixRow = { id: productId, storage_prefix: (row as { storage_prefix?: string | null }).storage_prefix ?? null };
+  const prefix = productStorageObjectPrefix(prefixRow);
   const path = `${prefix}/${fileName}`;
 
   const { error: rmErr } = await auth.service.storage.from(bucket).remove([path]);
@@ -362,16 +331,12 @@ async function handleProductImagesReorder(req: VercelRequest, res: VercelRespons
   const names = ordered.map((x) => String(x || '').trim()).filter(Boolean);
   if (names.length !== ordered.length) return res.status(400).json({ error: 'Invalid orderedFileNames' });
 
-  const { data: row, error: getErr } = await auth.service
-    .from('products')
-    .select('id, storage_prefix')
-    .eq('id', productId)
-    .maybeSingle();
+  const { data: row, error: getErr } = await auth.service.from('products').select('id').eq('id', productId).maybeSingle();
   if (getErr) return res.status(500).json({ error: getErr.message });
   if (!row) return res.status(404).json({ error: 'Product not found' });
 
   const bucket = (process.env.SUPABASE_PRODUCT_IMAGES_BUCKET || 'images').trim();
-  const rowForPrefix = { id: productId, storage_prefix: row.storage_prefix as string | null };
+  const rowForPrefix = { id: productId, storage_prefix: (row as { storage_prefix?: string | null }).storage_prefix ?? null };
   const prefix = productStorageObjectPrefix(rowForPrefix);
 
   let onDisk: string[];
@@ -418,7 +383,7 @@ async function handleSetPrimaryImages(req: VercelRequest, res: VercelResponse, a
 
   const { data: products, error: prodErr } = await auth.service
     .from('products')
-    .select('id, image, storage_prefix')
+    .select('id, image')
     .order('id', { ascending: true })
     .limit(limit);
   if (prodErr) return res.status(500).json({ error: prodErr.message || 'Failed to load products' });
@@ -435,7 +400,7 @@ async function handleSetPrimaryImages(req: VercelRequest, res: VercelResponse, a
       skipped += 1;
       continue;
     }
-    const prefix = productStorageObjectPrefix({ id, storage_prefix: (p as { storage_prefix?: string | null }).storage_prefix });
+    const prefix = productStorageObjectPrefix({ id, storage_prefix: (p as { storage_prefix?: string | null }).storage_prefix ?? null });
     const { data: entries, error: listErr } = await auth.service.storage.from(bucket).list(prefix, {
       limit: 100,
       offset: 0,
@@ -446,7 +411,7 @@ async function handleSetPrimaryImages(req: VercelRequest, res: VercelResponse, a
       continue;
     }
     const files = ((entries || []) as StorageEntry[])
-      .filter((e) => e?.name && e?.id && !IGNORED_PRIMARY.has(e.name))
+      .filter((e) => Boolean(e?.name) && !IGNORED_PRIMARY.has(e.name))
       .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
     const first = files[0];
     if (!first) {

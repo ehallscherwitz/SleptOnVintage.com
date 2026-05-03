@@ -20,7 +20,7 @@ export async function listGalleryFileNames(
   });
   if (error) throw new Error(error.message);
   return (data || [])
-    .filter((e) => e?.id && e.name && !IGNORED_GALLERY_NAMES.has(e.name))
+    .filter((e) => Boolean(e?.name) && !IGNORED_GALLERY_NAMES.has(e.name))
     .map((e) => e.name)
     .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
 }

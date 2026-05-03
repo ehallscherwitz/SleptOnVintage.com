@@ -269,11 +269,48 @@
   cursor: grab;
 }
 
-.admin-product-tile img {
+.admin-product-tile--static {
+  cursor: default;
+}
+
+.admin-product-tile img,
+.admin-product-tile .admin-product-tile-img {
   width: 100%;
   height: 120px;
   object-fit: cover;
   display: block;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.admin-product-tile-reorder {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.35rem 0.45rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  justify-content: center;
+}
+
+.admin-product-tile-move {
+  flex: 1;
+  padding: 0.25rem 0.35rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.admin-product-tile-move:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.admin-product-tile-move:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 .admin-product-tile-meta {
@@ -310,4 +347,44 @@
 .admin-btn-danger-solid:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.admin-listing-edit-link {
+  display: inline-block;
+  margin-top: 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #b8e0ff;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.admin-listing-edit-link:hover {
+  color: #dff3ff;
+}
+
+.admin-product-edit-alerts {
+  scroll-margin-top: 1rem;
+}
+
+a.admin-edit-detail-btn {
+  margin-top: 0.65rem;
+  width: 100%;
+  padding: 0.55rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: #111;
+  background: #b8e0ff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  text-decoration: none;
+  text-align: center;
+  display: block;
+  box-sizing: border-box;
+}
+
+a.admin-edit-detail-btn:hover {
+  filter: brightness(1.05);
 }

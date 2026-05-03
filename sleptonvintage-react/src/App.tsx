@@ -15,6 +15,7 @@ import OrderDetailPage from './pages/OrderDetailPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import AdminProductsPage from './pages/AdminProductsPage';
 import AdminProductEditPage from './pages/AdminProductEditPage';
+import Footer from './components/Footer';
 
 // Import styles (remove default Vite styles)
 import './styles/general.css';
@@ -27,32 +28,36 @@ import './styles/product-detail.css';
 import './styles/search.css';
 import './styles/checkout.css';
 import './styles/admin.css';
+import './styles/footer.css';
 
 function App() {
   return (
     <AuthProvider>
       <CartProvider>
         <Router>
-          <div className="App">
-            <Routes>
-              <Route path="/" element={<Homepage />} />
-              <Route path="/shirts" element={<CategoryPage category="shirts" title="Shirts" />} />
-              <Route path="/sweaters" element={<CategoryPage category="sweaters" title="Sweaters" />} />
-              <Route path="/hoodies" element={<CategoryPage category="hoodies" title="Hoodies" />} />
-              <Route path="/jackets" element={<CategoryPage category="jackets" title="Jackets" />} />
-              <Route path="/pants" element={<CategoryPage category="pants" title="Pants" />} />
-              <Route path="/shorts" element={<CategoryPage category="shorts" title="Shorts" />} />
-              <Route path="/product/:id" element={<ProductDetailPage />} />
-              <Route path="/search" element={<SearchPage />} />
-              <Route path="/cart" element={<CartPage />} />
-              <Route path="/checkout" element={<CheckoutPage />} />
-              <Route path="/orders" element={<OrdersPage />} />
-              <Route path="/orders/:orderId" element={<OrderDetailPage />} />
-              <Route path="/admin" element={<AdminDashboardPage />} />
-              <Route path="/admin/products" element={<AdminProductsPage />} />
-              <Route path="/admin/products/:id" element={<AdminProductEditPage />} />
-              <Route path="/auth/callback" element={<AuthCallback />} />
-            </Routes>
+          <div className="App app-layout">
+            <div className="app-main">
+              <Routes>
+                <Route path="/" element={<Homepage />} />
+                <Route path="/shirts" element={<CategoryPage category="shirts" title="Shirts" />} />
+                <Route path="/sweaters" element={<CategoryPage category="sweaters" title="Sweaters" />} />
+                <Route path="/hoodies" element={<CategoryPage category="hoodies" title="Hoodies" />} />
+                <Route path="/jackets" element={<CategoryPage category="jackets" title="Jackets" />} />
+                <Route path="/pants" element={<CategoryPage category="pants" title="Pants" />} />
+                <Route path="/shorts" element={<CategoryPage category="shorts" title="Shorts" />} />
+                <Route path="/product/:id" element={<ProductDetailPage />} />
+                <Route path="/search" element={<SearchPage />} />
+                <Route path="/cart" element={<CartPage />} />
+                <Route path="/checkout" element={<CheckoutPage />} />
+                <Route path="/orders" element={<OrdersPage />} />
+                <Route path="/orders/:orderId" element={<OrderDetailPage />} />
+                <Route path="/admin" element={<AdminDashboardPage />} />
+                <Route path="/admin/products" element={<AdminProductsPage />} />
+                <Route path="/admin/products/:id" element={<AdminProductEditPage />} />
+                <Route path="/auth/callback" element={<AuthCallback />} />
+              </Routes>
+            </div>
+            <Footer />
           </div>
         </Router>
       </CartProvider>
