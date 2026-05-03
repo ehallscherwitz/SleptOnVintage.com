@@ -98,6 +98,34 @@
   width: 100%;
   display: block;
   border-radius: 10px;
-  aspect-ratio: 1 / 1;
   background: rgba(255, 255, 255, 0.06);
+}
+
+/* Homepage: same square frame for real thumbs and empty-category placeholder */
+.homepage .category-grid .thumbnail-row {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  margin-bottom: 10px;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.homepage .category-grid .thumbnail-row img.thumbnail {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.homepage .category-grid .thumbnail-row .category-thumbnail-placeholder {
+  height: 100%;
+  min-height: 100%;
+  border-radius: 0;
+}
+
+/* ProductThumbnail loading / empty state (div, not img) */
+.homepage .category-grid .thumbnail-row > div.thumbnail {
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
 }

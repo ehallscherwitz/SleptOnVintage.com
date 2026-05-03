@@ -48,7 +48,7 @@ const Homepage: React.FC = () => {
   }, []);
 
   return (
-    <div>
+    <div className="homepage">
       <Header />
       <div className="subheader">FREE SHIPPING ON ALL ORDERS</div>
       <div className="category-grid">

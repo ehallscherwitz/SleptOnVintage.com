@@ -159,11 +159,8 @@ const AdminDashboardPage: React.FC = () => {
             <p className="admin-sub">Update status / tracking, or delete an order and restore inventory.</p>
           </div>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-            <Link to="/admin/products/new" className="checkout-btn-primary" style={{ textDecoration: 'none', display: 'inline-block' }}>
-              New listing
-            </Link>
             <Link to="/admin/products" className="admin-btn-secondary" style={{ textDecoration: 'none', display: 'inline-block' }}>
-              All listings
+              Products
             </Link>
             <button type="button" className="admin-btn-secondary" onClick={() => void load()} disabled={loading}>
               Refresh

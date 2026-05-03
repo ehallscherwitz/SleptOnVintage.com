@@ -2,6 +2,14 @@ import { supabase } from '../lib/supabase';
 
 const ADMIN_API = '/api/admin';
 
+function networkErrorHint(err: unknown): string {
+  const msg = err instanceof Error ? err.message : String(err);
+  if (import.meta.env.DEV && (msg === 'Failed to fetch' || msg.includes('fetch'))) {
+    return `${msg} (local dev: add DEV_PROXY_API_TARGET to .env.local pointing at your deployed site, or run \`vercel dev\` from sleptonvintage-react.)`;
+  }
+  return msg;
+}
+
 async function authHeaders(): Promise<HeadersInit> {
   const {
     data: { session },
@@ -30,7 +38,7 @@ export const adminService = {
       if (!response.ok) return { orders: [], error: data?.error || `HTTP ${response.status}` };
       return { orders: (data.orders as unknown[]) ?? [] };
     } catch (e) {
-      return { orders: [], error: e instanceof Error ? e.message : 'Failed to load orders' };
+      return { orders: [], error: networkErrorHint(e) || 'Failed to load orders' };
     }
   },
 
@@ -52,7 +60,7 @@ export const adminService = {
       if (!response.ok) return { error: data?.error || `HTTP ${response.status}` };
       return {};
     } catch (e) {
-      return { error: e instanceof Error ? e.message : 'Update failed' };
+      return { error: networkErrorHint(e) || 'Update failed' };
     }
   },
 
@@ -67,7 +75,7 @@ export const adminService = {
       if (!response.ok) return { error: data?.error || `HTTP ${response.status}` };
       return {};
     } catch (e) {
-      return { error: e instanceof Error ? e.message : 'Delete failed' };
+      return { error: networkErrorHint(e) || 'Delete failed' };
     }
   },
 
@@ -86,7 +94,7 @@ export const adminService = {
       if (!response.ok) return { products: [], error: data?.error || `HTTP ${response.status}` };
       return { products: (data.products as unknown[]) ?? [] };
     } catch (e) {
-      return { products: [], error: e instanceof Error ? e.message : 'Failed to load products' };
+      return { products: [], error: networkErrorHint(e) || 'Failed to load products' };
     }
   },
 
@@ -108,7 +116,7 @@ export const adminService = {
       if (!response.ok) return { error: data?.error || `HTTP ${response.status}` };
       return { product: data.product };
     } catch (e) {
-      return { error: e instanceof Error ? e.message : 'Create failed' };
+      return { error: networkErrorHint(e) || 'Create failed' };
     }
   },
 
@@ -123,7 +131,7 @@ export const adminService = {
       if (!response.ok) return { error: data?.error || `HTTP ${response.status}` };
       return { product: data.product, storageObjectPrefix: data.storageObjectPrefix as string };
     } catch (e) {
-      return { error: e instanceof Error ? e.message : 'Failed to load product' };
+      return { error: networkErrorHint(e) || 'Failed to load product' };
     }
   },
 
@@ -138,7 +146,7 @@ export const adminService = {
       if (!response.ok) return { error: data?.error || `HTTP ${response.status}` };
       return { product: data.product };
     } catch (e) {
-      return { error: e instanceof Error ? e.message : 'Update failed' };
+      return { error: networkErrorHint(e) || 'Update failed' };
     }
   },
 
@@ -153,7 +161,7 @@ export const adminService = {
       if (!response.ok) return { error: data?.error || `HTTP ${response.status}` };
       return {};
     } catch (e) {
-      return { error: e instanceof Error ? e.message : 'Delete failed' };
+      return { error: networkErrorHint(e) || 'Delete failed' };
     }
   },
 
@@ -168,7 +176,7 @@ export const adminService = {
       if (!response.ok) return { files: [], error: data?.error || `HTTP ${response.status}` };
       return { files: (data.files as { name: string; path: string; publicUrl: string }[]) || [], prefix: data.prefix as string };
     } catch (e) {
-      return { files: [], error: e instanceof Error ? e.message : 'List failed' };
+      return { files: [], error: networkErrorHint(e) || 'List failed' };
     }
   },
 
@@ -188,7 +196,7 @@ export const adminService = {
       if (!response.ok) return { error: data?.error || `HTTP ${response.status}` };
       return { path: data.path, publicUrl: data.publicUrl };
     } catch (e) {
-      return { error: e instanceof Error ? e.message : 'Upload failed' };
+      return { error: networkErrorHint(e) || 'Upload failed' };
     }
   },
 
@@ -203,7 +211,7 @@ export const adminService = {
       if (!response.ok) return { error: data?.error || `HTTP ${response.status}` };
       return {};
     } catch (e) {
-      return { error: e instanceof Error ? e.message : 'Delete failed' };
+      return { error: networkErrorHint(e) || 'Delete failed' };
     }
   },
 
@@ -218,7 +226,7 @@ export const adminService = {
       if (!response.ok) return { error: data?.error || `HTTP ${response.status}` };
       return {};
     } catch (e) {
-      return { error: e instanceof Error ? e.message : 'Reorder failed' };
+      return { error: networkErrorHint(e) || 'Reorder failed' };
     }
   },
 
@@ -244,7 +252,7 @@ export const adminService = {
       if (!response.ok) return { error: data?.error || `HTTP ${response.status}` };
       return { data };
     } catch (e) {
-      return { error: e instanceof Error ? e.message : 'Request failed' };
+      return { error: networkErrorHint(e) || 'Request failed' };
     }
   },
 };
