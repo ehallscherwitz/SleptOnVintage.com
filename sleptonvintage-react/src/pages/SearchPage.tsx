@@ -2,10 +2,17 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Header from '../components/Header';
+import { PageHeadingRow } from '../components/PageHeadingRow';
 import { useCart } from '../context/CartContext';
 import { ProductThumbnail } from '../components/ProductThumbnail';
 import { productService, type Product } from '../services/productService';
 import { formatUsdFromCents } from '../utils/money';
+
+function compareAvailableFirst(a: Product, b: Product): number {
+  // available=true first; sold (available=false) last
+  if (a.available === b.available) return 0;
+  return a.available ? -1 : 1;
+}
 
 const SearchPage: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -54,6 +61,8 @@ const SearchPage: React.FC = () => {
 
     // Sort products
     filtered.sort((a, b) => {
+      const avail = compareAvailableFirst(a, b);
+      if (avail !== 0) return avail;
       switch (sortBy) {
         case 'name-asc':
           return a.name.localeCompare(b.name);
@@ -97,7 +106,7 @@ const SearchPage: React.FC = () => {
     return (
       <div>
         <Header />
-        <div className="subheader">Search Products</div>
+        <PageHeadingRow title="Search Products" />
         <div style={{ textAlign: 'center', padding: '2rem' }}>
           Loading products...
         </div>
@@ -109,7 +118,7 @@ const SearchPage: React.FC = () => {
     return (
       <div>
         <Header />
-        <div className="subheader">Search Products</div>
+        <PageHeadingRow title="Search Products" />
         <div style={{ textAlign: 'center', padding: '2rem', color: 'red' }}>
           {error}
         </div>
@@ -120,7 +129,7 @@ const SearchPage: React.FC = () => {
   return (
     <div>
       <Header />
-      <div className="subheader">Search Products</div>
+      <PageHeadingRow title="Search Products" />
       
       <div className="search-container">
         <div className="search-filters">
@@ -182,7 +191,7 @@ const SearchPage: React.FC = () => {
                       <ProductThumbnail product={product} className="thumbnail" />
                     </div>
                     <div className="category-info-row">
-                      <div className="category-title" style={{ fontSize: '14px' }}>
+                      <div className="category-title">
                         {product.name} ({product.size}) ${formatUsdFromCents(product.price)}
                       </div>
                     </div>

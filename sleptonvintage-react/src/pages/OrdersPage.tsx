@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Header from '../components/Header';
+import { PageHeadingRow } from '../components/PageHeadingRow';
 import { useAuth } from '../context/AuthContext';
 import { orderService, type DbOrder } from '../services/orderService';
 import { formatUsdFromCents } from '../utils/money';
@@ -37,7 +38,7 @@ const OrdersPage: React.FC = () => {
       <div className="orders-page">
         <Header />
         <div className="orders-inner">
-          <h1 className="checkout-title">My orders</h1>
+          <PageHeadingRow title="My orders" />
           <p className="checkout-subtitle">Sign in to view your orders.</p>
         </div>
       </div>
@@ -48,7 +49,7 @@ const OrdersPage: React.FC = () => {
     <div className="orders-page">
       <Header />
       <div className="orders-inner">
-        <h1 className="checkout-title">My orders</h1>
+        <PageHeadingRow title="My orders" />
         <p className="checkout-subtitle">Track shipments and view order details.</p>
 
         {loading && <p style={{ color: 'rgba(255,255,255,0.6)' }}>Loading…</p>}

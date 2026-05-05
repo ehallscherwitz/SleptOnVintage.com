@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
+import { PageHeadingRow } from '../components/PageHeadingRow';
+import AuthModal from '../components/AuthModal';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { checkoutService, type CheckoutCartItem, type CustomerInfo, type ShippingInfo } from '../services/checkoutService';
@@ -17,6 +19,7 @@ export const CheckoutPage: React.FC = () => {
   const navigate = useNavigate();
   const { resetCart } = useCart();
   const { user } = useAuth();
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [cartItems, setCartItems] = useState<CheckoutCartItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [initialLoad, setInitialLoad] = useState(true);
@@ -283,13 +286,12 @@ export const CheckoutPage: React.FC = () => {
       <div className="checkout-shell">
         <Header />
         <div className="checkout-inner checkout-empty">
-          <h1 className="checkout-title">Checkout</h1>
+          <PageHeadingRow title="Checkout" />
           <p>Please sign in to complete your purchase.</p>
-          <p>
-            <Link to="/" className="checkout-link">
-              Continue shopping
-            </Link>
-          </p>
+          <button type="button" className="checkout-btn-primary" onClick={() => setShowAuthModal(true)}>
+            Sign in
+          </button>
+          <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
         </div>
       </div>
     );
@@ -300,7 +302,7 @@ export const CheckoutPage: React.FC = () => {
       <div className="checkout-shell">
         <Header />
         <div className="checkout-inner">
-          <h1 className="checkout-title">Checkout</h1>
+          <PageHeadingRow title="Checkout" />
           <p style={{ color: 'rgba(255,255,255,0.6)' }}>Loading your cart…</p>
         </div>
       </div>
@@ -312,7 +314,7 @@ export const CheckoutPage: React.FC = () => {
       <div className="checkout-shell">
         <Header />
         <div className="checkout-inner checkout-empty">
-          <h1 className="checkout-title">Checkout</h1>
+          <PageHeadingRow title="Checkout" />
           <p>Your cart is empty.</p>
           <p>
             <Link to="/" className="checkout-link">
@@ -332,7 +334,7 @@ export const CheckoutPage: React.FC = () => {
     <div className="checkout-shell">
       <Header />
       <div className="checkout-inner">
-        <h1 className="checkout-title">Checkout</h1>
+        <PageHeadingRow title="Checkout" />
         <p className="checkout-subtitle">Review your order, enter shipping details, and pay securely.</p>
 
         {error && <div className="checkout-alert checkout-alert--error">{error}</div>}

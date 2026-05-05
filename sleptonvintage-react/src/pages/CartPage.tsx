@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Header from '../components/Header';
+import { PageHeadingRow } from '../components/PageHeadingRow';
 import { useCart } from '../context/CartContext';
 import { ProductThumbnail } from '../components/ProductThumbnail';
 import { productService, type Product } from '../services/productService';
@@ -51,7 +52,7 @@ const CartPage: React.FC = () => {
     return (
       <div className="cart-page-wrap">
         <Header />
-        <div className="subheader">Your Cart</div>
+        <PageHeadingRow title="Your Cart" />
         <div style={{ textAlign: 'center', padding: '2rem' }}>Loading cart...</div>
       </div>
     );
@@ -62,10 +63,13 @@ const CartPage: React.FC = () => {
       <Header />
 
       {cart.length === 0 ? (
-        <div className="subheader">Your cart is empty!</div>
+        <>
+          <PageHeadingRow title="Your Cart" />
+          <div className="subheader">Your cart is empty!</div>
+        </>
       ) : (
         <>
-          <div className="subheader">Your Cart</div>
+          <PageHeadingRow title="Your Cart" />
 
           <div className="cart-grid">
             <div className="product-grid">

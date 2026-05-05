@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Header from '../components/Header';
+import { PageHeadingRow } from '../components/PageHeadingRow';
 import { useCart } from '../context/CartContext';
 import { ProductThumbnail } from '../components/ProductThumbnail';
 import { productService, type Product } from '../services/productService';
@@ -10,17 +11,6 @@ import { formatUsdFromCents } from '../utils/money';
 interface CategoryPageProps {
   category: Product['category'];
   title: string;
-}
-
-function CategoryPageHeadingRow({ title }: { title: string }) {
-  return (
-    <div className="category-page-head">
-      <Link to="/" className="category-back-link" aria-label="Back to home">
-        <i className="fa-solid fa-arrow-left" aria-hidden />
-      </Link>
-      <span className="category-page-head-title">{title}</span>
-    </div>
-  );
 }
 
 const CategoryPage: React.FC<CategoryPageProps> = ({ category, title }) => {
@@ -54,7 +44,7 @@ const CategoryPage: React.FC<CategoryPageProps> = ({ category, title }) => {
     return (
       <div>
         <Header />
-        <CategoryPageHeadingRow title={title} />
+        <PageHeadingRow title={title} />
         <div style={{ textAlign: 'center', padding: '2rem' }}>
           Loading products...
         </div>
@@ -66,7 +56,7 @@ const CategoryPage: React.FC<CategoryPageProps> = ({ category, title }) => {
     return (
       <div>
         <Header />
-        <CategoryPageHeadingRow title={title} />
+        <PageHeadingRow title={title} />
         <div style={{ textAlign: 'center', padding: '2rem', color: 'red' }}>
           {error}
         </div>
@@ -78,7 +68,7 @@ const CategoryPage: React.FC<CategoryPageProps> = ({ category, title }) => {
     return (
       <div>
         <Header />
-        <CategoryPageHeadingRow title={title} />
+        <PageHeadingRow title={title} />
         <p className="category-page-empty">No {title} available, check back soon!</p>
       </div>
     );
@@ -87,7 +77,7 @@ const CategoryPage: React.FC<CategoryPageProps> = ({ category, title }) => {
   return (
     <div>
       <Header />
-      <CategoryPageHeadingRow title={title} />
+      <PageHeadingRow title={title} />
       <div className="category-grid">
         {products.map(product => (
           <div key={product.id} className="category">
@@ -96,7 +86,7 @@ const CategoryPage: React.FC<CategoryPageProps> = ({ category, title }) => {
                 <ProductThumbnail product={product} className="thumbnail" />
               </div>
               <div className="category-info-row">
-                <div className="category-title" style={{ fontSize: '14px' }}>
+                <div className="category-title">
                   {product.name} ({product.size}) ${formatUsdFromCents(product.price)}
                 </div>
               </div>

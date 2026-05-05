@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import Header from '../components/Header';
+import { PageHeadingRow } from '../components/PageHeadingRow';
 import { useAuth } from '../context/AuthContext';
 import { getPrimaryProductImageUrl, productService, resolveProductImageUrls, type Product } from '../services/productService';
 import { useCart } from '../context/CartContext';
@@ -79,7 +80,7 @@ const ProductDetailPage: React.FC = () => {
     return (
       <div>
         <Header />
-        <div className="subheader">Loading Product...</div>
+        <PageHeadingRow title="Listing" />
         <div style={{ textAlign: 'center', padding: '2rem' }}>
           Loading product details...
         </div>
@@ -91,7 +92,7 @@ const ProductDetailPage: React.FC = () => {
     return (
       <div>
         <Header />
-        <div className="subheader">Product Not Found</div>
+        <PageHeadingRow title="Listing" />
         <div style={{ textAlign: 'center', padding: '2rem' }}>
           <p>{error || 'The product you are looking for does not exist.'}</p>
           <button 
@@ -108,7 +109,7 @@ const ProductDetailPage: React.FC = () => {
   return (
     <div>
       <Header />
-      <div className="subheader">{product.name}</div>
+      <PageHeadingRow title="Listing" />
       
       <div className="product-detail-container">
         <div className="breadcrumb">

@@ -1,4 +1,4 @@
-.category-page-head {
+.page-head {
   display: grid;
   grid-template-columns: minmax(2.25rem, auto) 1fr minmax(2.25rem, auto);
   align-items: center;
@@ -9,7 +9,7 @@
   box-sizing: border-box;
 }
 
-.category-back-link {
+.page-back-btn {
   grid-column: 1;
   justify-self: start;
   display: inline-flex;
@@ -18,18 +18,20 @@
   width: 2.25rem;
   height: 2.25rem;
   color: #fff;
-  text-decoration: none;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
   font-size: 1.1rem;
   border-radius: 50%;
   transition: color 0.15s ease, background-color 0.15s ease;
 }
 
-.category-back-link:hover {
+.page-back-btn:hover {
   color: rgba(255, 255, 255, 0.88);
   background-color: rgba(255, 255, 255, 0.08);
 }
 
-.category-page-head-title {
+.page-head-title {
   grid-column: 2;
   margin: 0;
   font-size: 24px;
@@ -41,8 +43,14 @@
   justify-self: stretch;
 }
 
+.page-head-spacer {
+  grid-column: 3;
+  width: 2.25rem;
+  height: 2.25rem;
+}
+
 @media (max-width: 550px) {
-  .category-page-head {
+  .page-head {
     padding-left: 20px;
     padding-right: 20px;
   }
@@ -88,7 +96,8 @@
 
 .category-info-row{
   width: 100%;
-  height: 40px;
+  min-height: 40px;
+  height: auto;
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -99,8 +108,11 @@
   font-family: Inter, Arial;
   font-weight: bold;
   text-align: center;
-  font-size: 18px;
+  font-size: clamp(12px, 2.6vw, 14px);
   color: white;
+  line-height: 1.15;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .category-title:hover {
@@ -131,6 +143,19 @@
   }
 
   
+}
+
+@media (max-width: 520px) {
+  /* Prevent long titles from blowing up the layout on phones */
+  .category-title {
+    font-size: clamp(11px, 3.2vw, 13px);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding-inline: 6px;
+  }
 }
 
 /* Hero video below header — black bleed, non-interactive (pointer-events disabled) */

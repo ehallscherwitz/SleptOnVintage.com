@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useLocation, useParams } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
 import Header from '../components/Header';
+import { PageHeadingRow } from '../components/PageHeadingRow';
 import { orderService, type DbOrderItem } from '../services/orderService';
 import { formatUsdFromCents } from '../utils/money';
 
@@ -46,13 +47,7 @@ const OrderDetailPage: React.FC = () => {
     <div className="order-detail-page">
       <Header />
       <div className="order-detail-inner">
-        <p style={{ marginBottom: 12 }}>
-          <Link to="/orders" className="checkout-link">
-            ← Back to my orders
-          </Link>
-        </p>
-
-        <h1 className="checkout-title">Order details</h1>
+        <PageHeadingRow title="Order details" fallbackTo="/orders" />
         {order && (
           <p className="checkout-subtitle">
             Placed {new Date(order.created_at).toLocaleString()} ·{' '}

@@ -44,7 +44,7 @@
 
 .category-filter-container,
 .sort-filter-container {
-  flex: 0 0 200px;
+  width: 100%;
 }
 
 .category-filter,
@@ -102,6 +102,10 @@
   }
   
   .category-filter-container {
+    flex: 0 0 200px;
+  }
+
+  .sort-filter-container {
     flex: 0 0 200px;
   }
 }

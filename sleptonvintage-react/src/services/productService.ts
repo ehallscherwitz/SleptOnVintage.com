@@ -129,6 +129,7 @@ export const productService = {
     const { data, error } = await supabase
       .from('products')
       .select('*')
+      .order('available', { ascending: false })
       .order('id', { ascending: true })
 
     if (error) {
@@ -145,6 +146,7 @@ export const productService = {
       .from('products')
       .select('*')
       .eq('category', category)
+      .order('available', { ascending: false })
       .order('id', { ascending: true })
 
     if (error) {
