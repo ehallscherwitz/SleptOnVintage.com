@@ -9,6 +9,7 @@
 }
 
 .site-footer {
+  --footer-font-size: 13px;
   background-color: black;
   padding: 1.25rem 1rem;
   display: flex;
@@ -16,23 +17,40 @@
   justify-content: center;
   align-items: center;
   gap: 1.25rem;
+  font-family: Inter, Arial, sans-serif;
+  font-size: var(--footer-font-size);
+  letter-spacing: 0.03em;
+  line-height: 1.35;
 }
 
 .site-footer-announcements {
-  max-width: 30rem;
-  width: 100%;
   margin: 0;
   padding: 0;
+  width: 100%;
+  max-width: min(100%, 1200px);
   text-align: center;
-  font-family: Inter, Arial, sans-serif;
-  font-size: 14px;
-  letter-spacing: 0.04em;
-  line-height: 1.45;
   color: rgba(255, 255, 255, 0.88);
+  /* Thin scroll only if nowrap content is wider than the screen */
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+}
+
+.site-footer-announcements::-webkit-scrollbar {
+  height: 4px;
+}
+
+.site-footer-announcements::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 2px;
 }
 
 .site-footer-announcement-line {
-  margin: 0 0 0.5rem;
+  display: block;
+  width: max-content;
+  max-width: none;
+  margin: 0 auto 0.5rem;
+  white-space: nowrap;
 }
 
 .site-footer-announcement-line:last-child {
@@ -45,19 +63,34 @@
   align-items: center;
   justify-content: center;
   gap: 0.75rem;
-  max-width: 36rem;
   width: 100%;
+  max-width: min(100%, 1200px);
   text-align: center;
-  color: white;
+  color: #fff;
   text-decoration: none;
-  font-family: Inter, Arial, sans-serif;
-  font-size: 14px;
-  letter-spacing: 0.5px;
-  line-height: 1.4;
+  font-size: inherit;
+  letter-spacing: inherit;
+  line-height: inherit;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+}
+
+.site-footer-link::-webkit-scrollbar {
+  height: 4px;
+}
+
+.site-footer-link::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 2px;
 }
 
 .site-footer-text {
   display: block;
+  width: max-content;
+  margin-left: auto;
+  margin-right: auto;
+  white-space: nowrap;
 }
 
 .site-footer-link:hover {
@@ -65,6 +98,7 @@
 }
 
 .site-footer-instagram {
-  font-size: 1.5rem;
+  font-size: var(--footer-font-size);
   flex-shrink: 0;
+  line-height: 1;
 }
