@@ -11,78 +11,73 @@
 .site-footer {
   --footer-font-size: 13px;
   background-color: black;
-  padding: 1.25rem 1rem;
+  padding: 1.35rem 1rem;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: 1.25rem;
+  gap: 1.35rem;
   font-family: Inter, Arial, sans-serif;
   font-size: var(--footer-font-size);
+  font-weight: 400;
   letter-spacing: 0.03em;
   line-height: 1.35;
 }
 
-.site-footer-announcements {
+.site-footer-line-scroll {
   margin: 0;
   padding: 0;
   width: 100%;
   max-width: min(100%, 1200px);
   text-align: center;
-  color: rgba(255, 255, 255, 0.88);
-  /* Thin scroll only if nowrap content is wider than the screen */
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: thin;
 }
 
-.site-footer-announcements::-webkit-scrollbar {
+.site-footer-line-scroll::-webkit-scrollbar {
   height: 4px;
 }
 
-.site-footer-announcements::-webkit-scrollbar-thumb {
+.site-footer-line-scroll::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.22);
   border-radius: 2px;
 }
 
-.site-footer-announcement-line {
+.site-footer-line {
+  margin: 0 auto;
   display: block;
   width: max-content;
   max-width: none;
-  margin: 0 auto 0.5rem;
   white-space: nowrap;
+  font-family: inherit;
+  font-size: var(--footer-font-size);
+  font-weight: 400;
+  letter-spacing: inherit;
+  line-height: inherit;
+  color: rgba(255, 255, 255, 0.88);
 }
 
-.site-footer-announcement-line:last-child {
-  margin-bottom: 0;
-}
-
+/* Override global `a` (font-weight 500, accent color) — match `.site-footer-line` */
 .site-footer-link {
-  display: flex;
+  display: inline-flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 0.75rem;
-  width: 100%;
-  max-width: min(100%, 1200px);
-  text-align: center;
-  color: #fff;
-  text-decoration: none;
-  font-size: inherit;
+  margin: 0 auto;
+  font-family: inherit;
+  font-size: var(--footer-font-size);
+  font-weight: 400;
   letter-spacing: inherit;
   line-height: inherit;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: thin;
+  color: rgba(255, 255, 255, 0.88);
+  text-decoration: none;
 }
 
-.site-footer-link::-webkit-scrollbar {
-  height: 4px;
-}
-
-.site-footer-link::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.22);
-  border-radius: 2px;
+.site-footer-link:hover {
+  color: rgba(255, 255, 255, 0.95);
+  text-decoration: underline;
 }
 
 .site-footer-text {
@@ -91,14 +86,13 @@
   margin-left: auto;
   margin-right: auto;
   white-space: nowrap;
-}
-
-.site-footer-link:hover {
-  text-decoration: underline;
+  font-weight: inherit;
+  font-size: inherit;
 }
 
 .site-footer-instagram {
-  font-size: var(--footer-font-size);
+  font-size: 1em;
+  font-weight: 400;
   flex-shrink: 0;
   line-height: 1;
 }
