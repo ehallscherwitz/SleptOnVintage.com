@@ -5,6 +5,12 @@ const INSTAGRAM_URL = 'https://www.instagram.com/slept.on.vintage/';
 const Footer: React.FC = () => {
   return (
     <footer className="site-footer">
+      <div className="site-footer-announcements" role="note">
+        <p className="site-footer-announcement-line">Free shipping on all orders</p>
+        <p className="site-footer-announcement-line">
+          All items are preowned, check pictures for any signs of wear
+        </p>
+      </div>
       <a
         className="site-footer-link"
         href={INSTAGRAM_URL}

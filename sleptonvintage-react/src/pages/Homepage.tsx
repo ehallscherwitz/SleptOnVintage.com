@@ -1,15 +1,21 @@
 // Homepage component - converted from homepage.html
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Header from '../components/Header';
 import { ProductThumbnail } from '../components/ProductThumbnail';
 import { supabase } from '../lib/supabase';
 import { productService, type Product } from '../services/productService';
 
-const HOMEPAGE_HERO_VIDEO_SRC = supabase.storage
-  .from('videos')
-  .getPublicUrl('sov black bg.mp4')
-  .data.publicUrl;
+const HOMEPAGE_VIDEO_BUCKET =
+  (import.meta.env.VITE_HOMEPAGE_VIDEO_BUCKET as string | undefined)?.trim() || 'videos';
+const HOMEPAGE_VIDEO_OBJECT_PATH =
+  (import.meta.env.VITE_HOMEPAGE_VIDEO_STORAGE_PATH as string | undefined)?.trim() ||
+  'sov black bg.mp4';
+
+function publicHeroVideoUrl(): string {
+  return supabase.storage.from(HOMEPAGE_VIDEO_BUCKET).getPublicUrl(HOMEPAGE_VIDEO_OBJECT_PATH).data
+    .publicUrl;
+}
 
 const CATEGORY_TILES: { name: string; path: string; slug: Product['category'] }[] = [
   { name: 'Shirts', path: '/shirts', slug: 'shirts' },
@@ -32,6 +38,9 @@ const Homepage: React.FC = () => {
   const [sampleByCategory, setSampleByCategory] = useState<
     Partial<Record<Product['category'], Product | null>>
   >({});
+  const [heroVideoSrc, setHeroVideoSrc] = useState(() => publicHeroVideoUrl());
+  const heroVideoRef = useRef<HTMLVideoElement>(null);
+  const heroTriedSignedUrl = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -53,12 +62,49 @@ const Homepage: React.FC = () => {
     };
   }, []);
 
+  useEffect(() => {
+    const el = heroVideoRef.current;
+    if (!el) return;
+    el.defaultMuted = true;
+    el.muted = true;
+    const tryPlay = () => {
+      void el.play().catch(() => {
+        /* autoplay policies; muted + playsInline usually succeed */
+      });
+    };
+    tryPlay();
+    el.addEventListener('canplay', tryPlay);
+    return () => el.removeEventListener('canplay', tryPlay);
+  }, [heroVideoSrc]);
+
+  async function retryHeroVideoWithSignedUrl() {
+    if (heroTriedSignedUrl.current) return;
+    heroTriedSignedUrl.current = true;
+    const { data, error } = await supabase.storage
+      .from(HOMEPAGE_VIDEO_BUCKET)
+      .createSignedUrl(HOMEPAGE_VIDEO_OBJECT_PATH, 60 * 60 * 24 * 7);
+    if (error || !data?.signedUrl) {
+      if (import.meta.env.DEV) {
+        console.error(
+          '[Homepage hero video] Signed URL fallback failed:',
+          error?.message ?? 'no URL',
+          { bucket: HOMEPAGE_VIDEO_BUCKET, path: HOMEPAGE_VIDEO_OBJECT_PATH },
+        );
+      }
+      return;
+    }
+    setHeroVideoSrc(data.signedUrl);
+  }
+
   return (
     <div className="homepage">
       <Header />
       <div className="homepage-hero-video-wrap">
         <video
+          key={heroVideoSrc}
+          ref={heroVideoRef}
           className="homepage-hero-video"
+          src={heroVideoSrc}
           autoPlay
           muted
           loop
@@ -66,11 +112,14 @@ const Homepage: React.FC = () => {
           preload="auto"
           tabIndex={-1}
           aria-hidden="true"
-        >
-          <source src={HOMEPAGE_HERO_VIDEO_SRC} type="video/mp4" />
-        </video>
+          onError={() => {
+            if (import.meta.env.DEV) {
+              console.error('[Homepage hero video] Load failed (check bucket is public or path matches):', heroVideoSrc);
+            }
+            void retryHeroVideoWithSignedUrl();
+          }}
+        />
       </div>
-      <div className="subheader">FREE SHIPPING ON ALL ORDERS</div>
       <div className="category-grid">
         {CATEGORY_TILES.map(({ name, path, slug }) => {
           const sample = sampleByCategory[slug];

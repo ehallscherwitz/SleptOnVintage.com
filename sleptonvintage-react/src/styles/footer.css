@@ -12,8 +12,31 @@
   background-color: black;
   padding: 1.25rem 1rem;
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
+  gap: 1.25rem;
+}
+
+.site-footer-announcements {
+  max-width: 30rem;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  text-align: center;
+  font-family: Inter, Arial, sans-serif;
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.site-footer-announcement-line {
+  margin: 0 0 0.5rem;
+}
+
+.site-footer-announcement-line:last-child {
+  margin-bottom: 0;
 }
 
 .site-footer-link {

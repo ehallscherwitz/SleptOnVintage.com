@@ -12,6 +12,17 @@ interface CategoryPageProps {
   title: string;
 }
 
+function CategoryPageHeadingRow({ title }: { title: string }) {
+  return (
+    <div className="category-page-head">
+      <Link to="/" className="category-back-link" aria-label="Back to home">
+        <i className="fa-solid fa-arrow-left" aria-hidden />
+      </Link>
+      <span className="category-page-head-title">{title}</span>
+    </div>
+  );
+}
+
 const CategoryPage: React.FC<CategoryPageProps> = ({ category, title }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,7 +54,7 @@ const CategoryPage: React.FC<CategoryPageProps> = ({ category, title }) => {
     return (
       <div>
         <Header />
-        <div className="subheader">{title}</div>
+        <CategoryPageHeadingRow title={title} />
         <div style={{ textAlign: 'center', padding: '2rem' }}>
           Loading products...
         </div>
@@ -55,7 +66,7 @@ const CategoryPage: React.FC<CategoryPageProps> = ({ category, title }) => {
     return (
       <div>
         <Header />
-        <div className="subheader">{title}</div>
+        <CategoryPageHeadingRow title={title} />
         <div style={{ textAlign: 'center', padding: '2rem', color: 'red' }}>
           {error}
         </div>
@@ -67,7 +78,7 @@ const CategoryPage: React.FC<CategoryPageProps> = ({ category, title }) => {
     return (
       <div>
         <Header />
-        <div className="subheader">{title}</div>
+        <CategoryPageHeadingRow title={title} />
         <p className="category-page-empty">No {title} available, check back soon!</p>
       </div>
     );
@@ -76,7 +87,7 @@ const CategoryPage: React.FC<CategoryPageProps> = ({ category, title }) => {
   return (
     <div>
       <Header />
-      <div className="subheader">{title}</div>
+      <CategoryPageHeadingRow title={title} />
       <div className="category-grid">
         {products.map(product => (
           <div key={product.id} className="category">

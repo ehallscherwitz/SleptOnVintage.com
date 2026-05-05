@@ -17,6 +17,7 @@ import AdminProductsPage from './pages/AdminProductsPage';
 import AdminProductEditPage from './pages/AdminProductEditPage';
 import AdminNewListingPage from './pages/AdminNewListingPage';
 import Footer from './components/Footer';
+import { ScrollToTop } from './components/ScrollToTop';
 
 // Import styles (remove default Vite styles)
 import './styles/general.css';
@@ -36,6 +37,7 @@ function App() {
     <AuthProvider>
       <CartProvider>
         <Router>
+          <ScrollToTop />
           <div className="App app-layout">
             <div className="app-main">
               <Routes>
