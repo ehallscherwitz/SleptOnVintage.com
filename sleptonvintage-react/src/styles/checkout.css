@@ -35,20 +35,19 @@
 @media (max-width: 900px) {
   .checkout-layout {
     grid-template-columns: 1fr;
-    isolation: isolate;
   }
 
-  /* Order summary first; paint main above aside so scrolled form/payment aren't hidden behind the card */
+  /* Order summary first; keep everything in normal flow to prevent overlap while scrolling on mobile browsers */
   .checkout-aside {
     order: -1;
-    position: relative;
-    z-index: 1;
+    position: static;
+    z-index: auto;
     top: auto;
   }
 
   .checkout-main {
-    position: relative;
-    z-index: 2;
+    position: static;
+    z-index: auto;
   }
 }
 

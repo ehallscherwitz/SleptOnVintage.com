@@ -148,9 +148,9 @@
 @media (max-width: 520px) {
   /* Prevent long titles from blowing up the layout on phones */
   .category-title {
-    font-size: clamp(11px, 3.2vw, 13px);
+    font-size: clamp(10.5px, 3vw, 12px);
     display: -webkit-box;
-    -webkit-line-clamp: 2;
+    -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
     text-overflow: ellipsis;
