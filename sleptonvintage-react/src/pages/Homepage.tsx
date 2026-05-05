@@ -3,7 +3,13 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Header from '../components/Header';
 import { ProductThumbnail } from '../components/ProductThumbnail';
+import { supabase } from '../lib/supabase';
 import { productService, type Product } from '../services/productService';
+
+const HOMEPAGE_HERO_VIDEO_SRC = supabase.storage
+  .from('videos')
+  .getPublicUrl('sov black bg.mp4')
+  .data.publicUrl;
 
 const CATEGORY_TILES: { name: string; path: string; slug: Product['category'] }[] = [
   { name: 'Shirts', path: '/shirts', slug: 'shirts' },
@@ -50,6 +56,20 @@ const Homepage: React.FC = () => {
   return (
     <div className="homepage">
       <Header />
+      <div className="homepage-hero-video-wrap">
+        <video
+          className="homepage-hero-video"
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="auto"
+          tabIndex={-1}
+          aria-hidden="true"
+        >
+          <source src={HOMEPAGE_HERO_VIDEO_SRC} type="video/mp4" />
+        </video>
+      </div>
       <div className="subheader">FREE SHIPPING ON ALL ORDERS</div>
       <div className="category-grid">
         {CATEGORY_TILES.map(({ name, path, slug }) => {

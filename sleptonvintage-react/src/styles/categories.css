@@ -82,6 +82,27 @@
   }
 }
 
+/* Hero video below header — black bleed, non-interactive (pointer-events disabled) */
+.homepage-hero-video-wrap {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  line-height: 0;
+  background: #000;
+}
+
+.homepage-hero-video {
+  display: block;
+  width: 100%;
+  height: auto;
+  vertical-align: top;
+  border: none;
+  outline: none;
+  box-shadow: none;
+  pointer-events: none;
+  user-select: none;
+}
+
 .category-page-empty {
   text-align: center;
   padding: 3rem 1.5rem;
