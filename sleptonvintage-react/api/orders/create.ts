@@ -1,5 +1,6 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { SquareClient, SquareEnvironment } from 'square';
+import { createClient } from '@supabase/supabase-js';
 
 function getSquareEnvironment() {
   const env = (process.env.SQUARE_ENV || '').toLowerCase();
@@ -27,6 +28,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     if (!process.env.SQUARE_LOCATION_ID) {
       return res.status(500).json({ error: 'Missing SQUARE_LOCATION_ID env var on server.' });
+    }
+    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
+      return res.status(500).json({ error: 'Missing SUPABASE_URL / SUPABASE_ANON_KEY env vars on server.' });
     }
 
     const { cartItems, customerInfo, shippingInfo, promoCode } = req.body;
@@ -85,13 +89,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const promoApplied = tenOffCodes.has(normalizedPromo);
     const promoRate = promoApplied ? 0.1 : 0;
 
-    const sourceProducts = cartItems.map((cartItem: any) => {
-      const product = cartItem.product;
-      if (!product) {
-        throw new Error(`Product not found for cart item ${cartItem.id}`);
-      }
-      return product;
-    });
+    const productIds = [...new Set(cartItems.map((ci: any) => ci?.product_id).filter((id: any) => Number.isFinite(id)))];
+    if (productIds.length !== cartItems.length) {
+      return res.status(400).json({ error: 'Invalid cart items (missing product_id)' });
+    }
+
+    // Never trust client-supplied product price/name/availability.
+    // Fetch authoritative product rows from Supabase and build the Square order from that.
+    const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+    const { data: products, error: prodErr } = await supabase
+      .from('products')
+      .select('id, name, price, size, image, category, available')
+      .in('id', productIds);
+    if (prodErr) {
+      console.error('Order create: failed to fetch products:', prodErr);
+      return res.status(500).json({ error: 'Failed to fetch product data' });
+    }
+
+    const byId = new Map<number, any>((products || []).map((p: any) => [p.id as number, p]));
+    const sourceProducts = productIds.map((id) => byId.get(id)).filter(Boolean);
+    if (sourceProducts.length !== productIds.length) {
+      return res.status(400).json({ error: 'One or more products not found' });
+    }
+
+    const unavailable = sourceProducts.find((p: any) => !p.available);
+    if (unavailable) {
+      return res.status(409).json({ error: 'One or more items are no longer available' });
+    }
 
     const subtotal = sourceProducts.reduce((sum: number, p: any) => sum + p.price, 0);
     const discountAmount = promoApplied ? Math.round(subtotal * promoRate) : 0;
