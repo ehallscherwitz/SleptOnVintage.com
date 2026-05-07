@@ -18,6 +18,13 @@ function getSquareClient() {
   });
 }
 
+function toNumberAmount(v: unknown): number {
+  if (typeof v === 'bigint') return Number(v);
+  if (typeof v === 'number') return v;
+  if (typeof v === 'string') return Number(v);
+  return 0;
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method === 'GET') return res.status(200).json({ ok: true });
@@ -31,7 +38,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(500).json({ error: 'Missing SUPABASE_URL / SUPABASE_ANON_KEY env vars on server.' });
     }
 
-    const { sourceId, orderId, buyerEmail, shippingAddress, billingAddress, customerInfo } = req.body;
+    const { sourceId, orderId, buyerEmail, shippingAddress, billingAddress, customerInfo, promoCode } = req.body;
 
     // Validate required fields
     if (!sourceId || !orderId) {
@@ -52,18 +59,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    const totalAmount = orderResult.order.totalMoney.amount;
+    const totalAmount = toNumberAmount(orderResult.order.totalMoney.amount);
+    const taxAmount = toNumberAmount(orderResult.order.totalTaxMoney?.amount);
+    const discountAmount = toNumberAmount(orderResult.order.totalDiscountMoney?.amount);
+    const shippingAmount = 0;
+    const subtotalAmount = Math.max(0, totalAmount - taxAmount - shippingAmount + discountAmount);
 
     // Create payment
     const paymentsApi = client.payments;
     const paymentRequest = {
       sourceId: sourceId,
       amountMoney: {
-        amount: totalAmount,
+        amount: BigInt(totalAmount),
         currency: 'USD' as const
       },
       // Square requires idempotency keys <= 45 chars.
-      idempotencyKey: crypto.randomUUID(),
+      // Use a stable key so client retries don't double-charge.
+      idempotencyKey: `pay-${orderId}`.slice(0, 45),
       orderId: orderId,
       buyerEmailAddress: buyerEmail,
       shippingAddress: shippingAddress ? {
@@ -107,6 +119,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         p_square_payment_id: result.payment.id,
         p_customer_info: customerInfo ?? { email: buyerEmail },
         p_shipping_info: shippingAddress ?? billingAddress ?? null,
+        p_promo_code: promoCode ?? null,
+        p_subtotal: subtotalAmount,
+        p_discount: discountAmount,
+        p_tax: taxAmount,
+        p_shipping: shippingAmount,
+        p_total: totalAmount,
       });
 
       if (finalizeError) {

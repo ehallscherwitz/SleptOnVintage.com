@@ -12,6 +12,7 @@ create table if not exists public.orders (
 
   -- money is stored in cents (integers) but we keep column names simple
   subtotal bigint not null check (subtotal >= 0),
+  discount bigint not null default 0 check (discount >= 0),
   tax bigint not null default 0 check (tax >= 0),
   shipping bigint not null default 0 check (shipping >= 0),
   total bigint not null check (total >= 0),
@@ -19,6 +20,7 @@ create table if not exists public.orders (
   status text not null default 'paid',
 
   buyer_email text,
+  promo_code text,
   shipping_name text,
   shipping_address jsonb,
 
@@ -34,9 +36,23 @@ create table if not exists public.orders (
   updated_at timestamptz not null default now()
 );
 
+-- If table already existed before we added `discount`, keep it forward-compatible.
+alter table public.orders
+  add column if not exists discount bigint not null default 0 check (discount >= 0);
+alter table public.orders
+  add column if not exists promo_code text;
+
 create index if not exists orders_user_id_created_at_idx on public.orders (user_id, created_at desc);
 create index if not exists orders_square_payment_id_idx on public.orders (square_payment_id);
 create index if not exists orders_square_order_id_idx on public.orders (square_order_id);
+
+-- Idempotency + data integrity: a Square payment/order should only map to one row.
+create unique index if not exists orders_square_payment_id_uniq
+  on public.orders (square_payment_id)
+  where square_payment_id is not null;
+create unique index if not exists orders_square_order_id_uniq
+  on public.orders (square_order_id)
+  where square_order_id is not null;
 
 -- Order items (snapshot of product at purchase time)
 create table if not exists public.order_items (
@@ -89,6 +105,12 @@ create or replace function public.finalize_order(
   p_square_payment_id text,
   p_customer_info jsonb,
   p_shipping_info jsonb,
+  p_promo_code text default null,
+  p_subtotal bigint default null,
+  p_discount bigint default 0,
+  p_tax bigint default null,
+  p_shipping bigint default 0,
+  p_total bigint default null,
   p_tax_rate numeric default 0.085
 )
 returns uuid
@@ -102,6 +124,7 @@ declare
   v_item_count int;
   v_updated_count int;
   v_subtotal bigint;
+  v_discount bigint := 0;
   v_tax bigint;
   v_shipping bigint := 0;
   v_total bigint;
@@ -110,6 +133,19 @@ begin
   v_user_id := auth.uid();
   if v_user_id is null then
     raise exception 'Not authenticated';
+  end if;
+
+  -- Idempotency: if we've already finalized this payment, return the existing order.
+  if p_square_payment_id is not null then
+    select o.id into v_order_id
+    from public.orders o
+    where o.square_payment_id = p_square_payment_id
+      and o.user_id = v_user_id
+    limit 1;
+
+    if v_order_id is not null then
+      return v_order_id;
+    end if;
   end if;
 
   select c.id into v_cart_id
@@ -137,8 +173,22 @@ begin
     raise exception 'Cart is empty';
   end if;
 
-  v_tax := round(v_subtotal * p_tax_rate)::bigint;
-  v_total := v_subtotal + v_tax + v_shipping;
+  -- Prefer server-supplied totals (derived from Square) when present.
+  -- Fallback to computing tax/total from the cart snapshot.
+  v_discount := greatest(coalesce(p_discount, 0), 0);
+  v_shipping := greatest(coalesce(p_shipping, 0), 0);
+
+  if p_subtotal is not null and p_tax is not null and p_total is not null then
+    v_subtotal := greatest(p_subtotal, 0);
+    v_tax := greatest(p_tax, 0);
+    v_total := greatest(p_total, 0);
+  else
+    v_tax := round(v_subtotal * p_tax_rate)::bigint;
+    v_total := v_subtotal + v_tax + v_shipping - v_discount;
+    if v_total < 0 then
+      v_total := 0;
+    end if;
+  end if;
 
   -- Ensure all items are still available; flip them to unavailable
   with wanted as (
@@ -162,9 +212,10 @@ begin
 
   insert into public.orders (
     user_id,
-    subtotal, tax, shipping, total,
+    subtotal, discount, tax, shipping, total,
     status,
     buyer_email,
+    promo_code,
     shipping_name,
     shipping_address,
     square_order_id,
@@ -172,9 +223,10 @@ begin
   )
   values (
     v_user_id,
-    v_subtotal, v_tax, v_shipping, v_total,
+    v_subtotal, v_discount, v_tax, v_shipping, v_total,
     'paid',
     p_customer_info->>'email',
+    nullif(btrim(p_promo_code), ''),
     trim(coalesce(p_customer_info->>'firstName','') || ' ' || coalesce(p_customer_info->>'lastName','')),
     p_shipping_info,
     p_square_order_id,
@@ -202,8 +254,8 @@ end;
 $$;
 
 -- Allow authenticated users to call it (function enforces auth.uid())
-revoke all on function public.finalize_order(text, text, jsonb, jsonb, numeric) from public;
-grant execute on function public.finalize_order(text, text, jsonb, jsonb, numeric) to authenticated;
+revoke all on function public.finalize_order(text, text, jsonb, jsonb, text, bigint, bigint, bigint, bigint, bigint, numeric) from public;
+grant execute on function public.finalize_order(text, text, jsonb, jsonb, text, bigint, bigint, bigint, bigint, bigint, numeric) to authenticated;
 
 commit;
 

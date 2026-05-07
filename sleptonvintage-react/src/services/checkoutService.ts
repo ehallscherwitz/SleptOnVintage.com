@@ -166,7 +166,8 @@ export const checkoutService = {
     buyerEmail: string,
     shippingAddress: ShippingInfo,
     billingAddress: ShippingInfo | undefined,
-    customerInfo: CustomerInfo
+    customerInfo: CustomerInfo,
+    promoCode?: string
   ): Promise<{ data: any; error: any }> {
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -185,6 +186,7 @@ export const checkoutService = {
           shippingAddress,
           billingAddress: billingAddress || shippingAddress, // Use shipping as billing if not provided
           customerInfo,
+          promoCode: normalizePromoCode(promoCode),
         })
       });
 

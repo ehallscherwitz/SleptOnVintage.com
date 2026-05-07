@@ -75,6 +75,12 @@ const OrderDetailPage: React.FC = () => {
                 <span>Subtotal</span>
                 <strong>${formatUsdFromCents(order.subtotal)}</strong>
               </div>
+              {typeof (order as any).discount === 'number' && (order as any).discount > 0 && (
+                <div className="checkout-total-row">
+                  <span>Promo{(order as any).promo_code ? ` (${(order as any).promo_code})` : ''}</span>
+                  <strong>- ${formatUsdFromCents((order as any).discount)}</strong>
+                </div>
+              )}
               <div className="checkout-total-row">
                 <span>Tax</span>
                 <strong>${formatUsdFromCents(order.tax)}</strong>
@@ -89,23 +95,25 @@ const OrderDetailPage: React.FC = () => {
               </div>
             </div>
 
-            {(order.tracking_number || order.tracking_url) && (
-              <div className="order-detail-panel">
-                <h2>Tracking</h2>
-                {order.tracking_number && (
-                  <p style={{ margin: '0 0 8px', color: 'rgba(255,255,255,0.85)' }}>
-                    <strong>USPS:</strong> {order.tracking_number}
-                  </p>
-                )}
-                {order.tracking_url && (
-                  <div className="order-tracking-box">
-                    <a href={order.tracking_url} target="_blank" rel="noopener noreferrer">
-                      Track package →
-                    </a>
-                  </div>
-                )}
-              </div>
-            )}
+            <div className="order-detail-panel">
+              <h2>Tracking</h2>
+              {order.tracking_number && (
+                <p style={{ margin: '0 0 8px', color: 'rgba(255,255,255,0.85)' }}>
+                  <strong>USPS:</strong> {order.tracking_number}
+                </p>
+              )}
+              {order.tracking_url ? (
+                <div className="order-tracking-box">
+                  <a href={order.tracking_url} target="_blank" rel="noopener noreferrer">
+                    Track package →
+                  </a>
+                </div>
+              ) : (
+                <p style={{ margin: 0, color: 'rgba(255,255,255,0.65)' }}>
+                  Tracking number will be provided soon.
+                </p>
+              )}
+            </div>
 
             <div className="order-detail-panel">
               <h2>Shipping</h2>
@@ -128,11 +136,52 @@ const OrderDetailPage: React.FC = () => {
             <div className="order-detail-panel">
               <h2>Items</h2>
               {items.map((it) => (
-                <div key={it.id} className="order-item-row">
-                  <span>
-                    {it.name} <span style={{ color: 'rgba(255,255,255,0.45)' }}>({it.size})</span>
-                  </span>
-                  <span>${formatUsdFromCents(it.price)}</span>
+                <div
+                  key={it.id}
+                  className="order-item-row"
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+                    {it.image ? (
+                      <img
+                        src={it.image}
+                        alt={it.name}
+                        style={{
+                          width: 56,
+                          height: 56,
+                          objectFit: 'cover',
+                          borderRadius: 8,
+                          border: '1px solid rgba(255,255,255,0.15)',
+                          flexShrink: 0,
+                        }}
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div
+                        aria-hidden="true"
+                        style={{
+                          width: 56,
+                          height: 56,
+                          borderRadius: 8,
+                          background: 'rgba(255,255,255,0.06)',
+                          border: '1px solid rgba(255,255,255,0.12)',
+                          flexShrink: 0,
+                        }}
+                      />
+                    )}
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {it.name}{' '}
+                        <span style={{ color: 'rgba(255,255,255,0.45)' }}>
+                          ({it.size})
+                        </span>
+                      </div>
+                      <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.9rem' }}>
+                        ${formatUsdFromCents(it.price)}
+                      </div>
+                    </div>
+                  </div>
+                  <span style={{ color: 'rgba(255,255,255,0.85)' }}>${formatUsdFromCents(it.price)}</span>
                 </div>
               ))}
             </div>

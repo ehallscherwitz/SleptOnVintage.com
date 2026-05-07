@@ -27,6 +27,11 @@ export const CheckoutPage: React.FC = () => {
   const [paymentReady, setPaymentReady] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState<'idle' | 'loading' | 'ready' | 'unavailable'>('idle');
   const cardRef = useRef<any>(null);
+  const [pendingSquareOrder, setPendingSquareOrder] = useState<{
+    id: string;
+    totals?: { subtotal?: number; discount?: number; discountedSubtotal?: number; tax?: number; total?: number };
+    promoCode?: string | null;
+  } | null>(null);
 
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo>({
     firstName: '',
@@ -70,6 +75,7 @@ export const CheckoutPage: React.FC = () => {
           setError(loadErr.message || 'Failed to load cart items');
         } else {
           setCartItems(data);
+          setPendingSquareOrder(null);
         }
       } catch (err) {
         setError('Failed to load cart items');
@@ -173,16 +179,27 @@ export const CheckoutPage: React.FC = () => {
     try {
       await ensureSquareCardMounted();
 
-      const { data: orderData, error: orderErr } = await checkoutService.createOrder(
-        cartItems,
-        customerInfo,
-        shippingInfo,
-        appliedPromoCode || undefined
-      );
-      if (orderErr) throw new Error(orderErr.message || 'Failed to create order');
+      // Step 1: create the Square order so we can show the exact total Square will charge.
+      if (!pendingSquareOrder) {
+        const { data: orderData, error: orderErr } = await checkoutService.createOrder(
+          cartItems,
+          customerInfo,
+          shippingInfo,
+          appliedPromoCode || undefined
+        );
+        if (orderErr) throw new Error(orderErr.message || 'Failed to create order');
 
-      const squareOrderId = orderData?.order?.id;
-      if (!squareOrderId) throw new Error('Square order ID missing from response.');
+        const squareOrderId = orderData?.order?.id as string | undefined;
+        if (!squareOrderId) throw new Error('Square order ID missing from response.');
+
+        setPendingSquareOrder({
+          id: squareOrderId,
+          totals: orderData?.totals,
+          promoCode: orderData?.promo?.code ?? appliedPromoCode ?? null,
+        });
+        setLoading(false);
+        return;
+      }
 
       const tokenResult = await cardRef.current.tokenize();
       if (tokenResult.status !== 'OK') {
@@ -192,11 +209,12 @@ export const CheckoutPage: React.FC = () => {
       const sourceId = tokenResult.token;
       const { data: payData, error: payErr } = await checkoutService.processPayment(
         sourceId,
-        squareOrderId,
+        pendingSquareOrder.id,
         customerInfo.email,
         shippingInfo,
         shippingInfo,
-        customerInfo
+        customerInfo,
+        pendingSquareOrder.promoCode ?? undefined
       );
       if (payErr) throw new Error(payErr.message || 'Payment failed');
 
@@ -264,20 +282,24 @@ export const CheckoutPage: React.FC = () => {
   };
 
   const totals = checkoutService.calculateTotals(cartItems, appliedPromoCode || undefined);
+  const displayTotals = pendingSquareOrder?.totals?.total != null ? pendingSquareOrder.totals : totals;
 
   const applyPromo = () => {
     const code = promoInput.trim().toUpperCase();
     if (!code) {
       setAppliedPromoCode(null);
       setPromoMessage(null);
+      setPendingSquareOrder(null);
       return;
     }
     if (code === 'SOV') {
       setAppliedPromoCode('SOV');
       setPromoMessage('Promo applied: SOV (10% off).');
+      setPendingSquareOrder(null);
     } else {
       setAppliedPromoCode(null);
       setPromoMessage('Invalid promo code.');
+      setPendingSquareOrder(null);
     }
   };
 
@@ -462,8 +484,17 @@ export const CheckoutPage: React.FC = () => {
               <p className="checkout-hint">Card details are collected securely by Square.</p>
               <div id="card-container" className="checkout-card-frame" />
               <button type="button" className="checkout-btn-primary" onClick={() => void handlePayNow()} disabled={loading || !paymentReady}>
-                {loading ? 'Processing…' : `Pay $${formatUsdFromCents(totals.total)}`}
+                {loading
+                  ? 'Processing…'
+                  : pendingSquareOrder
+                    ? `Confirm & Pay $${formatUsdFromCents(displayTotals.total ?? totals.total)}`
+                    : 'Review total (Square)'}
               </button>
+              {pendingSquareOrder && (
+                <p className="checkout-hint" style={{ marginTop: 10 }}>
+                  Total above is pulled from Square’s order calculation. Clicking “Confirm” will charge that exact amount.
+                </p>
+              )}
               {import.meta.env.DEV && (
                 <>
                   <button type="button" className="checkout-btn-secondary" onClick={() => void handleTestOrder()} disabled={loading}>
@@ -493,17 +524,17 @@ export const CheckoutPage: React.FC = () => {
               <div className="checkout-totals">
                 <div className="checkout-total-row">
                   <span>Subtotal</span>
-                  <strong>${formatUsdFromCents(totals.subtotal)}</strong>
+                  <strong>${formatUsdFromCents(displayTotals.subtotal ?? totals.subtotal)}</strong>
                 </div>
-                {totals.discount > 0 && (
+                {(displayTotals.discount ?? totals.discount) > 0 && (
                   <div className="checkout-total-row">
-                    <span>Promo ({totals.promo.code})</span>
-                    <strong>- ${formatUsdFromCents(totals.discount)}</strong>
+                    <span>Promo ({pendingSquareOrder?.promoCode ?? totals.promo.code})</span>
+                    <strong>- ${formatUsdFromCents(displayTotals.discount ?? totals.discount)}</strong>
                   </div>
                 )}
                 <div className="checkout-total-row">
-                  <span>Estimated tax</span>
-                  <strong>${formatUsdFromCents(totals.tax)}</strong>
+                  <span>{pendingSquareOrder ? 'Tax' : 'Estimated tax'}</span>
+                  <strong>${formatUsdFromCents(displayTotals.tax ?? totals.tax)}</strong>
                 </div>
                 <div className="checkout-total-row">
                   <span>Shipping</span>
@@ -511,7 +542,7 @@ export const CheckoutPage: React.FC = () => {
                 </div>
                 <div className="checkout-total-grand">
                   <span>Total</span>
-                  <span>${formatUsdFromCents(totals.total)}</span>
+                  <span>${formatUsdFromCents(displayTotals.total ?? totals.total)}</span>
                 </div>
               </div>
               <p className="checkout-shipping-note">USPS tracking will appear on your order once the item ships.</p>

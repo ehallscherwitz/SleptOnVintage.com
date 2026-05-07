@@ -4,11 +4,13 @@ export interface DbOrder {
   id: string;
   user_id: string;
   subtotal: number;
+  discount?: number;
   tax: number;
   shipping: number;
   total: number;
   status: string;
   buyer_email: string | null;
+  promo_code?: string | null;
   shipping_name: string | null;
   shipping_address: Record<string, unknown> | null;
   square_order_id: string | null;
