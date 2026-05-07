@@ -23,6 +23,23 @@ function guessStoragePrefixFromImagePath(raw: string | null | undefined): string
   return parts.length >= 2 ? parts[1] : null;
 }
 
+/** Prefer saved URL; otherwise default USPS tools link when we have a tracking number. */
+function resolveTrackingHref(order: {
+  tracking_url?: string | null;
+  tracking_number?: string | null;
+  carrier?: string | null;
+}): string | null {
+  const url = (order.tracking_url || '').trim();
+  if (url) return url;
+  const num = (order.tracking_number || '').trim();
+  if (!num) return null;
+  const carrier = (order.carrier || 'usps').trim().toLowerCase();
+  if (carrier === 'usps' || carrier === '') {
+    return `https://tools.usps.com/go/TrackConfirmAction?tLabels=${encodeURIComponent(num)}`;
+  }
+  return null;
+}
+
 const OrderDetailPage: React.FC = () => {
   const { orderId } = useParams<{ orderId: string }>();
   const location = useLocation();
@@ -148,22 +165,40 @@ const OrderDetailPage: React.FC = () => {
 
             <div className="order-detail-panel">
               <h2>Tracking</h2>
-              {order.tracking_number && (
-                <p style={{ margin: '0 0 8px', color: 'rgba(255,255,255,0.85)' }}>
-                  <strong>USPS:</strong> {order.tracking_number}
-                </p>
-              )}
-              {order.tracking_url ? (
-                <div className="order-tracking-box">
-                  <a href={order.tracking_url} target="_blank" rel="noopener noreferrer">
-                    Track package →
-                  </a>
-                </div>
-              ) : (
-                <p style={{ margin: 0, color: 'rgba(255,255,255,0.65)' }}>
-                  Tracking number will be provided soon.
-                </p>
-              )}
+              {(() => {
+                const trackHref = resolveTrackingHref(order);
+                const num = (order.tracking_number || '').trim();
+                if (trackHref) {
+                  return (
+                    <div className="order-tracking-box">
+                      {num ? (
+                        <p style={{ margin: '0 0 10px', color: 'rgba(255,255,255,0.85)' }}>
+                          <strong>Tracking #:</strong> {num}
+                        </p>
+                      ) : null}
+                      <a href={trackHref} target="_blank" rel="noopener noreferrer">
+                        Track package →
+                      </a>
+                    </div>
+                  );
+                }
+                if (num) {
+                  return (
+                    <p style={{ margin: 0, color: 'rgba(255,255,255,0.65)' }}>
+                      Tracking #: {num}
+                      <br />
+                      <span style={{ fontSize: '0.9rem', opacity: 0.85 }}>
+                        No carrier link on file — contact us if you need a tracking URL.
+                      </span>
+                    </p>
+                  );
+                }
+                return (
+                  <p style={{ margin: 0, color: 'rgba(255,255,255,0.65)' }}>
+                    Tracking number will be provided soon.
+                  </p>
+                );
+              })()}
             </div>
 
             <div className="order-detail-panel">
