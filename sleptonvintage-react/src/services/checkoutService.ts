@@ -42,9 +42,27 @@ function normalizePromoCode(raw?: string | null): string {
   return (raw || '').trim().toUpperCase();
 }
 
+const TEN_OFF_PROMO_CODES = new Set([
+  'SOV',
+  'EMEKA',
+  'PRABHAS',
+  'NOOR',
+  'DIEGO',
+  'GINA',
+  'ISHANI',
+  'SAUMYA',
+  'RYAN',
+  'JULIAN',
+  'EISA',
+  'JACOB',
+  'SCOT',
+  'YOGURT',
+  'PEDXING',
+]);
+
 function evaluatePromo(code?: string | null): PromoResult {
   const normalized = normalizePromoCode(code);
-  if (normalized === 'SOV') {
+  if (TEN_OFF_PROMO_CODES.has(normalized)) {
     return { applied: true, code: normalized, discountRate: 0.1 };
   }
   return { applied: false, code: null, discountRate: 0 };

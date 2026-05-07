@@ -65,7 +65,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const normalizedPromo = String(promoCode || '').trim().toUpperCase();
-    const promoApplied = normalizedPromo === 'SOV';
+    const tenOffCodes = new Set([
+      'SOV',
+      'EMEKA',
+      'PRABHAS',
+      'NOOR',
+      'DIEGO',
+      'GINA',
+      'ISHANI',
+      'SAUMYA',
+      'RYAN',
+      'JULIAN',
+      'EISA',
+      'JACOB',
+      'SCOT',
+      'YOGURT',
+      'PEDXING',
+    ]);
+    const promoApplied = tenOffCodes.has(normalizedPromo);
     const promoRate = promoApplied ? 0.1 : 0;
 
     const sourceProducts = cartItems.map((cartItem: any) => {

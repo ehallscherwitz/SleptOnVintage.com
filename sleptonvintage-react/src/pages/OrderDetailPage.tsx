@@ -4,8 +4,24 @@ import Header from '../components/Header';
 import { PageHeadingRow } from '../components/PageHeadingRow';
 import { orderService, type DbOrderItem } from '../services/orderService';
 import { formatUsdFromCents } from '../utils/money';
+import { getProductGalleryPublicUrls, getPublicProductImageUrlFromPath } from '../services/productService';
 
 type OrderWithItems = Awaited<ReturnType<typeof orderService.getOrderWithItems>>['data'];
+
+function resolveOrderItemImageUrl(raw: string | null | undefined): string {
+  const s = (raw || '').trim();
+  if (!s) return '';
+  if (s.startsWith('http://') || s.startsWith('https://')) return s;
+  if (s.startsWith('products/') || s.startsWith('items/')) return getPublicProductImageUrlFromPath(s);
+  return s;
+}
+
+function guessStoragePrefixFromImagePath(raw: string | null | undefined): string | null {
+  const s = (raw || '').trim();
+  if (!s.startsWith('products/')) return null;
+  const parts = s.split('/');
+  return parts.length >= 2 ? parts[1] : null;
+}
 
 const OrderDetailPage: React.FC = () => {
   const { orderId } = useParams<{ orderId: string }>();
@@ -16,6 +32,10 @@ const OrderDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(checkoutSuccess);
+  const [activeItem, setActiveItem] = useState<DbOrderItem | null>(null);
+  const [galleryUrls, setGalleryUrls] = useState<string[]>([]);
+  const [galleryIdx, setGalleryIdx] = useState(0);
+  const [galleryLoading, setGalleryLoading] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -42,6 +62,37 @@ const OrderDetailPage: React.FC = () => {
 
   const items: DbOrderItem[] = order?.order_items ?? [];
   const addr = order?.shipping_address as Record<string, string> | null;
+  const isGalleryOpen = Boolean(activeItem);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadGallery() {
+      if (!activeItem) return;
+      setGalleryLoading(true);
+      setGalleryUrls([]);
+      setGalleryIdx(0);
+
+      const guessedPrefix = guessStoragePrefixFromImagePath(activeItem.image);
+      const urls =
+        (await getProductGalleryPublicUrls({
+          id: activeItem.product_id,
+          storage_prefix: guessedPrefix,
+        })) || [];
+
+      const fallback = resolveOrderItemImageUrl(activeItem.image);
+      const finalUrls = urls.length > 0 ? urls : fallback ? [fallback] : [];
+
+      if (!cancelled) {
+        setGalleryUrls(finalUrls);
+        setGalleryIdx(0);
+        setGalleryLoading(false);
+      }
+    }
+    void loadGallery();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeItem]);
 
   return (
     <div className="order-detail-page">
@@ -139,12 +190,24 @@ const OrderDetailPage: React.FC = () => {
                 <div
                   key={it.id}
                   className="order-item-row"
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setActiveItem(it)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') setActiveItem(it);
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 12,
+                    cursor: 'pointer',
+                  }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-                    {it.image ? (
+                    {resolveOrderItemImageUrl(it.image) ? (
                       <img
-                        src={it.image}
+                        src={resolveOrderItemImageUrl(it.image)}
                         alt={it.name}
                         style={{
                           width: 56,
@@ -188,6 +251,113 @@ const OrderDetailPage: React.FC = () => {
           </>
         )}
       </div>
+
+      {isGalleryOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Item photos"
+          onClick={() => setActiveItem(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.75)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 16,
+            zIndex: 1000,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: 'min(920px, 100%)',
+              background: 'rgba(10,10,10,0.96)',
+              border: '1px solid rgba(255,255,255,0.15)',
+              borderRadius: 14,
+              overflow: 'hidden',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '12px 14px' }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ color: 'rgba(255,255,255,0.9)', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {activeItem?.name}
+                </div>
+                <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.9rem' }}>
+                  Click outside to close
+                </div>
+              </div>
+              <button
+                type="button"
+                className="checkout-btn-secondary"
+                style={{ margin: 0, width: 'auto', padding: '0.35rem 0.65rem' }}
+                onClick={() => setActiveItem(null)}
+              >
+                Close
+              </button>
+            </div>
+
+            <div style={{ padding: 14 }}>
+              {galleryLoading ? (
+                <div style={{ color: 'rgba(255,255,255,0.65)' }}>Loading photos…</div>
+              ) : galleryUrls.length > 0 ? (
+                <div className="product-gallery" style={{ margin: 0 }}>
+                  <div className="product-gallery-main" style={{ position: 'relative' }}>
+                    <img
+                      className="product-detail-image"
+                      src={galleryUrls[galleryIdx]}
+                      alt={`${activeItem?.name ?? 'Item'} — photo ${galleryIdx + 1}`}
+                      style={{ maxHeight: '72vh', width: '100%', objectFit: 'contain', background: 'rgba(255,255,255,0.02)' }}
+                    />
+                    {galleryUrls.length > 1 && (
+                      <>
+                        <button
+                          type="button"
+                          className="product-gallery-nav product-gallery-prev"
+                          aria-label="Previous photo"
+                          onClick={() => setGalleryIdx((i) => (i === 0 ? galleryUrls.length - 1 : i - 1))}
+                        >
+                          ‹
+                        </button>
+                        <button
+                          type="button"
+                          className="product-gallery-nav product-gallery-next"
+                          aria-label="Next photo"
+                          onClick={() => setGalleryIdx((i) => (i >= galleryUrls.length - 1 ? 0 : i + 1))}
+                        >
+                          ›
+                        </button>
+                        <span className="product-gallery-counter">
+                          {galleryIdx + 1} / {galleryUrls.length}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                  {galleryUrls.length > 1 && (
+                    <div className="product-gallery-thumbs" role="tablist" aria-label="Item photos">
+                      {galleryUrls.map((url, idx) => (
+                        <button
+                          key={`${idx}-${url}`}
+                          type="button"
+                          role="tab"
+                          aria-selected={idx === galleryIdx}
+                          className={`product-gallery-thumb ${idx === galleryIdx ? 'active' : ''}`}
+                          onClick={() => setGalleryIdx(idx)}
+                        >
+                          <img src={url} alt="" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div style={{ color: 'rgba(255,255,255,0.65)' }}>No photos available.</div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
