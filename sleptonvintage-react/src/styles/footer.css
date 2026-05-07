@@ -96,3 +96,23 @@
   flex-shrink: 0;
   line-height: 1;
 }
+
+@media (max-width: 520px) {
+  .site-footer {
+    --footer-font-size: 11.5px;
+    padding: 1.15rem 0.85rem;
+    gap: 1.05rem;
+    line-height: 1.25;
+  }
+
+  .site-footer-line-scroll {
+    overflow-x: hidden;
+  }
+
+  .site-footer-line,
+  .site-footer-text {
+    width: auto;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}
