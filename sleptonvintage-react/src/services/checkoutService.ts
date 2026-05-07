@@ -68,6 +68,10 @@ function evaluatePromo(code?: string | null): PromoResult {
   return { applied: false, code: null, discountRate: 0 };
 }
 
+export function getPromoResult(code?: string | null): PromoResult {
+  return evaluatePromo(code);
+}
+
 export const checkoutService = {
   async parseResponse(response: Response): Promise<{ ok: boolean; data: any; errorMessage?: string }> {
     const text = await response.text();

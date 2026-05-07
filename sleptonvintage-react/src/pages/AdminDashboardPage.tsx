@@ -12,17 +12,46 @@ interface OrderItem {
   size?: string;
 }
 
+type ShippingAddressSnap = {
+  address1?: string;
+  address2?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  notes?: string;
+};
+
+function formatShippingLines(addr: ShippingAddressSnap | Record<string, string> | null | undefined): string[] {
+  if (!addr || typeof addr !== 'object') return [];
+  const a = addr as ShippingAddressSnap;
+  const line1 = [a.address1, a.address2].filter(Boolean).join(', ');
+  const line2 = [a.city, a.state, a.zipCode].filter(Boolean).join(', ');
+  const out: string[] = [];
+  if (line1) out.push(line1);
+  if (line2) out.push(line2);
+  if (a.notes) out.push(`Notes: ${a.notes}`);
+  return out;
+}
+
 interface AdminOrder {
   id: string;
   user_id: string;
   status: string;
   buyer_email: string | null;
+  shipping_name?: string | null;
+  shipping_address?: ShippingAddressSnap | Record<string, unknown> | null;
+  promo_code?: string | null;
   total: number;
+  subtotal?: number;
+  discount?: number;
+  tax?: number;
+  shipping?: number;
   created_at: string;
   tracking_number: string | null;
   tracking_url: string | null;
   carrier: string | null;
   square_order_id?: string | null;
+  square_payment_id?: string | null;
   order_items?: OrderItem[];
 }
 
@@ -45,6 +74,8 @@ const AdminDashboardPage: React.FC = () => {
     tracking_number: string;
     tracking_url: string;
   } | null>(null);
+  /** Full order snapshot for fulfillment details in the edit modal */
+  const [editTarget, setEditTarget] = useState<AdminOrder | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -64,6 +95,7 @@ const AdminDashboardPage: React.FC = () => {
   }, [load]);
 
   const openEdit = (o: AdminOrder) => {
+    setEditTarget(o);
     setEditing({
       orderId: o.id,
       status: o.status || 'paid',
@@ -89,13 +121,18 @@ const AdminDashboardPage: React.FC = () => {
     if (error) alert(error);
     else {
       setEditing(null);
+      setEditTarget(null);
       void load();
     }
   };
 
   const confirmDelete = async (o: AdminOrder) => {
     const ok = window.confirm(
-      `Delete order ${o.id.slice(0, 8)}…?\n\nThis restores listed products as available for sale and removes the order from the database.`
+      `Delete order ${o.id.slice(0, 8)}…?\n\n` +
+        `• Restores inventory in your database.\n` +
+        `• Removes this order row from Supabase.\n\n` +
+        `This does NOT refund the customer in Square. Refund separately in Square if money must be returned.\n\n` +
+        `Continue?`
     );
     if (!ok) return;
     setDeletingId(o.id);
@@ -217,6 +254,7 @@ const AdminDashboardPage: React.FC = () => {
               <thead>
                 <tr>
                   <th>Date</th>
+                  <th>Ship to</th>
                   <th>Email</th>
                   <th>Total</th>
                   <th>Status</th>
@@ -228,6 +266,20 @@ const AdminDashboardPage: React.FC = () => {
                 {orders.map((o) => (
                   <tr key={o.id}>
                     <td>{new Date(o.created_at).toLocaleString()}</td>
+                    <td className="admin-cell-muted" style={{ maxWidth: 200 }}>
+                      <div style={{ fontWeight: 600, color: 'rgba(255,255,255,0.9)' }}>
+                        {(o.shipping_name || '').trim() || '—'}
+                      </div>
+                      <div style={{ marginTop: 4, fontSize: 12, lineHeight: 1.35 }}>
+                        {(() => {
+                          const lines = formatShippingLines(o.shipping_address as ShippingAddressSnap | undefined);
+                          if (lines.length === 0) return <span style={{ opacity: 0.7 }}>No address snapshot</span>;
+                          return lines.map((ln, i) => (
+                            <div key={i}>{ln}</div>
+                          ));
+                        })()}
+                      </div>
+                    </td>
                     <td className="admin-cell-muted">{o.buyer_email ?? '—'}</td>
                     <td>${formatUsdFromCents(Number(o.total))}</td>
                     <td>
@@ -258,11 +310,80 @@ const AdminDashboardPage: React.FC = () => {
 
         {editing && (
           <div className="admin-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="admin-edit-title">
-            <div className="admin-modal">
+            <div className="admin-modal" style={{ maxWidth: 560 }}>
               <h2 id="admin-edit-title" className="admin-modal-title">
                 Update order
               </h2>
               <p className="admin-modal-id">{editing.orderId}</p>
+
+              {(() => {
+                const editTargetResolved = editTarget ?? orders.find((o) => o.id === editing.orderId);
+                if (!editTargetResolved) return null;
+                const shipLines = formatShippingLines(editTargetResolved.shipping_address as ShippingAddressSnap | undefined);
+                return (
+              <div
+                style={{
+                  marginBottom: 16,
+                  padding: 12,
+                  borderRadius: 8,
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  fontSize: 13,
+                  lineHeight: 1.45,
+                }}
+              >
+                <div style={{ fontWeight: 700, marginBottom: 8 }}>Fulfill from here</div>
+                <div>
+                  <strong>Name:</strong> {editTargetResolved.shipping_name?.trim() || '—'}
+                </div>
+                <div style={{ marginTop: 6 }}>
+                  <strong>Ship to:</strong>
+                  <div style={{ marginTop: 4, opacity: 0.92 }}>
+                    {shipLines.length === 0 ? (
+                      <span style={{ opacity: 0.7 }}>No address on file (older orders may be missing).</span>
+                    ) : (
+                      shipLines.map((ln, idx) => (
+                        <div key={`ship-${idx}`}>{ln}</div>
+                      ))
+                    )}
+                  </div>
+                </div>
+                <div style={{ marginTop: 8 }}>
+                  <strong>Buyer email:</strong> {editTargetResolved.buyer_email ?? '—'}
+                </div>
+                {editTargetResolved.promo_code ? (
+                  <div style={{ marginTop: 6 }}>
+                    <strong>Promo:</strong> {editTargetResolved.promo_code}
+                  </div>
+                ) : null}
+                <div style={{ marginTop: 10 }}>
+                  <strong>Items</strong>
+                  <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
+                    {(editTargetResolved.order_items || []).map((it) => (
+                      <li key={it.id}>
+                        {it.name}
+                        {it.size ? ` — ${it.size}` : ''} <span style={{ opacity: 0.7 }}>(#{it.product_id})</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                {(editTargetResolved.square_order_id || editTargetResolved.square_payment_id) && (
+                  <div style={{ marginTop: 10, fontSize: 12, opacity: 0.75, wordBreak: 'break-all' }}>
+                    {editTargetResolved.square_order_id && (
+                      <div>
+                        <strong>Square order:</strong> {editTargetResolved.square_order_id}
+                      </div>
+                    )}
+                    {editTargetResolved.square_payment_id && (
+                      <div style={{ marginTop: 4 }}>
+                        <strong>Square payment:</strong> {editTargetResolved.square_payment_id}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+                );
+              })()}
 
               <label className="admin-label">Status</label>
               <select
@@ -304,7 +425,14 @@ const AdminDashboardPage: React.FC = () => {
               <p className="admin-hint">Setting status to <strong>shipped</strong> also sets shipped time.</p>
 
               <div className="admin-modal-actions">
-                <button type="button" className="checkout-btn-secondary" onClick={() => setEditing(null)}>
+                <button
+                  type="button"
+                  className="checkout-btn-secondary"
+                  onClick={() => {
+                    setEditing(null);
+                    setEditTarget(null);
+                  }}
+                >
                   Cancel
                 </button>
                 <button type="button" className="checkout-btn-primary" disabled={!!savingId} onClick={() => void saveEdit()}>

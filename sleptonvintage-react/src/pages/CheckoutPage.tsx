@@ -5,7 +5,7 @@ import { PageHeadingRow } from '../components/PageHeadingRow';
 import AuthModal from '../components/AuthModal';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import { checkoutService, type CheckoutCartItem, type CustomerInfo, type ShippingInfo } from '../services/checkoutService';
+import { checkoutService, getPromoResult, type CheckoutCartItem, type CustomerInfo, type ShippingInfo } from '../services/checkoutService';
 import { formatUsdFromCents } from '../utils/money';
 import { ProductThumbnail } from '../components/ProductThumbnail';
 
@@ -292,9 +292,10 @@ export const CheckoutPage: React.FC = () => {
       setPendingSquareOrder(null);
       return;
     }
-    if (code === 'SOV') {
-      setAppliedPromoCode('SOV');
-      setPromoMessage('Promo applied: SOV (10% off).');
+    const promo = getPromoResult(code);
+    if (promo.applied && promo.code) {
+      setAppliedPromoCode(promo.code);
+      setPromoMessage(`Promo applied: ${promo.code} (10% off).`);
       setPendingSquareOrder(null);
     } else {
       setAppliedPromoCode(null);
