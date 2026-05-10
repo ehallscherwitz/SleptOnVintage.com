@@ -37,17 +37,9 @@
     grid-template-columns: 1fr;
   }
 
-  /* Order summary first; keep everything in normal flow to prevent overlap while scrolling on mobile browsers */
+  /* Summary before the form; single column scroll — no sticky (see desktop-only rule below). */
   .checkout-aside {
     order: -1;
-    position: static;
-    z-index: auto;
-    top: auto;
-  }
-
-  .checkout-main {
-    position: static;
-    z-index: auto;
   }
 }
 
@@ -126,13 +118,18 @@
   min-height: 72px;
 }
 
+/* Sticky summary only on desktop; mobile uses normal flow so it cannot cover the form. */
 .checkout-aside {
-  position: sticky;
-  top: 1rem;
   margin-top: 0;
 }
 
 @media (min-width: 901px) {
+  .checkout-aside {
+    position: sticky;
+    top: 1rem;
+    align-self: start;
+  }
+
   .checkout-aside .checkout-summary-card {
     margin-top: 0.25rem;
   }
