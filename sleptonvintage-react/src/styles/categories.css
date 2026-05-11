@@ -104,6 +104,10 @@
   justify-content: center;
 }
 
+.category-info-row--product {
+  align-items: flex-start;
+}
+
 .category-title{
   font-family: Inter, Arial;
   font-weight: bold;
@@ -132,9 +136,51 @@
   transform: translateY(-2px);
 }
 
-.thumbnail, .category-title{
+.thumbnail, .category-title, .category-product-title {
   cursor: pointer;
   pointer-events: auto;
+}
+
+/* Product grids: title uses up to 2 lines; third line is always size + price */
+.category-product-text {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.category-product-title {
+  font-family: Inter, Arial;
+  font-weight: bold;
+  text-align: center;
+  font-size: clamp(12px, 2.6vw, 14px);
+  color: white;
+  line-height: 1.15;
+  max-width: 100%;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.category-product-title:hover {
+  opacity: 0.8;
+}
+
+.category-product-meta {
+  font-family: Inter, Arial;
+  font-weight: bold;
+  text-align: center;
+  font-size: clamp(12px, 2.6vw, 14px);
+  color: rgba(255, 255, 255, 0.92);
+  line-height: 1.15;
+  flex-shrink: 0;
+  width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 @media (max-width: 970px) {
@@ -146,7 +192,7 @@
 }
 
 @media (max-width: 520px) {
-  /* Prevent long titles from blowing up the layout on phones */
+  /* Homepage category tiles only — product grids use .category-product-title (2 lines) + .category-product-meta */
   .category-title {
     font-size: clamp(10.5px, 3vw, 12px);
     display: -webkit-box;
@@ -154,6 +200,12 @@
     -webkit-box-orient: vertical;
     overflow: hidden;
     text-overflow: ellipsis;
+    padding-inline: 6px;
+  }
+
+  .category-product-title,
+  .category-product-meta {
+    font-size: clamp(10.5px, 3vw, 12px);
     padding-inline: 6px;
   }
 }

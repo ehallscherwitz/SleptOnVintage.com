@@ -57,6 +57,7 @@ const TEN_OFF_PROMO_CODES = new Set([
   'JACOB',
   'SCOT',
   'YOGURT',
+  'UTD',
   'PEDXING',
 ]);
 

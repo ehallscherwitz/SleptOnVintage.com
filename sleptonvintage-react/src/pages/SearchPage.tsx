@@ -190,9 +190,12 @@ const SearchPage: React.FC = () => {
                     <div className="thumbnail-row">
                       <ProductThumbnail product={product} className="thumbnail" />
                     </div>
-                    <div className="category-info-row">
-                      <div className="category-title">
-                        {product.name} ({product.size}) ${formatUsdFromCents(product.price)}
+                    <div className="category-info-row category-info-row--product">
+                      <div className="category-product-text">
+                        <div className="category-product-title">{product.name}</div>
+                        <div className="category-product-meta">
+                          {product.size} · ${formatUsdFromCents(product.price)}
+                        </div>
                       </div>
                     </div>
                   </Link>

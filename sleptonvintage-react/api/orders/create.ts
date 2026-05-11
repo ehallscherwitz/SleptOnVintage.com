@@ -84,6 +84,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       'JACOB',
       'SCOT',
       'YOGURT',
+      'UTD',
       'PEDXING',
     ]);
     const promoApplied = tenOffCodes.has(normalizedPromo);

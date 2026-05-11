@@ -147,7 +147,8 @@ export const productService = {
       .select('*')
       .eq('category', category)
       .order('available', { ascending: false })
-      .order('id', { ascending: true })
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
 
     if (error) {
       console.error(`Error fetching ${category} products:`, error)
