@@ -8,7 +8,11 @@ import {
   resolveProductImageUrls,
   type Product,
 } from '../services/productService';
+import AdminImageCropModal from '../components/AdminImageCropModal';
 import { isAdminEmail } from '../utils/adminAccess';
+import { rotateImageBase64, type RotateDegrees } from '../utils/rotateImage';
+
+type CropSession = { fileName: string; contentType: string; dataBase64: string };
 
 type GalleryFile = { name: string; path: string; publicUrl: string };
 
@@ -42,6 +46,8 @@ const AdminProductEditPage: React.FC = () => {
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [orderDirty, setOrderDirty] = useState(false);
+  const [imageCacheBust, setImageCacheBust] = useState<Record<string, number>>({});
+  const [cropSession, setCropSession] = useState<CropSession | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -196,6 +202,103 @@ const AdminProductEditPage: React.FC = () => {
     reader.readAsDataURL(input);
   };
 
+  const imageSrc = (publicUrl: string, fileName: string) => {
+    const v = imageCacheBust[fileName];
+    if (!v) return publicUrl;
+    const sep = publicUrl.includes('?') ? '&' : '?';
+    return `${publicUrl}${sep}v=${v}`;
+  };
+
+  const bumpImageCache = (fileName: string) => {
+    setImageCacheBust((prev) => ({ ...prev, [fileName]: Date.now() }));
+  };
+
+  const uploadImageBytes = async (fileName: string, contentType: string, dataBase64: string, successMsg: string) => {
+    const { error: upErr } = await adminService.uploadProductImageBase64({
+      productId,
+      fileName,
+      contentType,
+      dataBase64,
+    });
+    if (upErr) {
+      setErr(upErr);
+      return false;
+    }
+    setMsg(successMsg);
+    bumpImageCache(fileName);
+    void loadImages();
+    if (product) {
+      const previews = await resolveProductImageUrls(product, getPrimaryProductImageUrl(product));
+      setPreviewUrls(previews);
+    }
+    return true;
+  };
+
+  const openCrop = async (fileName: string) => {
+    if (!Number.isFinite(productId)) return;
+    setSaving(true);
+    setErr(null);
+    try {
+      const { contentType, dataBase64, error: dlErr } = await adminService.downloadProductImage(productId, fileName);
+      if (dlErr || !dataBase64) {
+        setErr(dlErr || 'Could not load image');
+        return;
+      }
+      setCropSession({
+        fileName,
+        contentType: contentType || 'image/jpeg',
+        dataBase64,
+      });
+    } catch (ex) {
+      setErr(ex instanceof Error ? ex.message : 'Could not open crop tool');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const applyCrop = async (result: { base64: string; contentType: string }) => {
+    if (!cropSession) return;
+    setSaving(true);
+    setErr(null);
+    try {
+      const ok = await uploadImageBytes(
+        cropSession.fileName,
+        result.contentType,
+        result.base64,
+        `Cropped ${cropSession.fileName}`
+      );
+      if (ok) setCropSession(null);
+    } catch (ex) {
+      setErr(ex instanceof Error ? ex.message : 'Crop failed');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const rotatePhoto = async (fileName: string, degrees: RotateDegrees) => {
+    if (!Number.isFinite(productId)) return;
+    setSaving(true);
+    setErr(null);
+    try {
+      const { contentType, dataBase64, error: dlErr } = await adminService.downloadProductImage(productId, fileName);
+      if (dlErr || !dataBase64) {
+        setErr(dlErr || 'Could not load image');
+        return;
+      }
+      const { base64, contentType: outType } = await rotateImageBase64(
+        dataBase64,
+        contentType || 'image/jpeg',
+        degrees,
+        fileName
+      );
+      await uploadImageBytes(fileName, outType, base64, `Rotated ${fileName}`);
+    } catch (ex) {
+      setErr(ex instanceof Error ? ex.message : 'Rotate failed');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const removePhoto = async (fileName: string) => {
     if (!window.confirm(`Delete ${fileName} from Storage?`)) return;
     setSaving(true);
@@ -311,6 +414,18 @@ const AdminProductEditPage: React.FC = () => {
   return (
     <div className="admin-page">
       <Header />
+      {cropSession && (
+        <AdminImageCropModal
+          fileName={cropSession.fileName}
+          dataBase64={cropSession.dataBase64}
+          contentType={cropSession.contentType}
+          busy={saving}
+          onCancel={() => {
+            if (!saving) setCropSession(null);
+          }}
+          onApply={applyCrop}
+        />
+      )}
       <div className="admin-inner admin-product-edit">
         <div className="admin-page-head">
           <div>
@@ -374,8 +489,8 @@ const AdminProductEditPage: React.FC = () => {
         <section className="admin-product-section">
           <h2 className="admin-product-section-title">Photos</h2>
           <p className="admin-hint">
-            Reorder photos in the list below (drag a tile by its edges, or use ↑ ↓ on each tile), then click &quot;Save photo order&quot;. First image becomes the
-            storefront thumbnail. Max ~4&nbsp;MB per upload.
+            Reorder photos in the list below (drag a tile by its edges, or use ↑ ↓ on each tile), then click &quot;Save photo order&quot;. Use Crop, ↺, or ↻ to
+            crop (1:1 square) or rotate a photo in place. First image becomes the storefront thumbnail. Max ~4&nbsp;MB per upload.
           </p>
           <div className="admin-product-upload-row">
             <label className="checkout-btn-secondary" style={{ cursor: saving ? 'not-allowed' : 'pointer' }}>
@@ -419,7 +534,45 @@ const AdminProductEditPage: React.FC = () => {
                       ↓
                     </button>
                   </div>
-                  <img src={f.publicUrl} alt="" loading="lazy" draggable={false} className="admin-product-tile-img" />
+                  <img
+                    src={imageSrc(f.publicUrl, f.name)}
+                    alt=""
+                    loading="lazy"
+                    draggable={false}
+                    className="admin-product-tile-img"
+                  />
+                  <div className="admin-product-tile-tools">
+                    <button
+                      type="button"
+                      className="admin-product-tile-move"
+                      disabled={saving || !!cropSession}
+                      aria-label="Crop photo to square"
+                      title="Crop (1:1)"
+                      onClick={() => void openCrop(f.name)}
+                    >
+                      Crop
+                    </button>
+                    <button
+                      type="button"
+                      className="admin-product-tile-move"
+                      disabled={saving || !!cropSession}
+                      aria-label="Rotate photo 90 degrees counter-clockwise"
+                      title="Rotate left"
+                      onClick={() => void rotatePhoto(f.name, -90)}
+                    >
+                      ↺
+                    </button>
+                    <button
+                      type="button"
+                      className="admin-product-tile-move"
+                      disabled={saving || !!cropSession}
+                      aria-label="Rotate photo 90 degrees clockwise"
+                      title="Rotate right"
+                      onClick={() => void rotatePhoto(f.name, 90)}
+                    >
+                      ↻
+                    </button>
+                  </div>
                   <div className="admin-product-tile-meta">{f.name}</div>
                   <button type="button" className="admin-btn-small admin-btn-danger" disabled={saving} onClick={() => void removePhoto(f.name)}>
                     Remove

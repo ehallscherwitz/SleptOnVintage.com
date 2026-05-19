@@ -284,12 +284,19 @@
   -webkit-user-drag: none;
 }
 
-.admin-product-tile-reorder {
+.admin-product-tile-reorder,
+.admin-product-tile-tools {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.25rem;
   padding: 0.35rem 0.45rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   justify-content: center;
+}
+
+.admin-product-tile-tools .admin-product-tile-move {
+  min-width: 2.4rem;
+  font-size: 0.72rem;
 }
 
 .admin-product-tile-move {
@@ -323,6 +330,89 @@
 .admin-product-tile .admin-btn-small {
   width: 100%;
   border-radius: 0;
+}
+
+.admin-crop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.72);
+}
+
+.admin-crop-panel {
+  width: min(640px, 100%);
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+  padding: 1.1rem 1.15rem 1.25rem;
+  border-radius: 12px;
+  background: #1a1a1a;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+}
+
+.admin-crop-title {
+  margin: 0 0 0.35rem;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.admin-crop-hint {
+  margin: 0 0 0.85rem;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.65);
+  line-height: 1.4;
+}
+
+.admin-crop-viewport {
+  position: relative;
+  width: 100%;
+  height: min(62vh, 480px);
+  margin-bottom: 0.85rem;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #000;
+  touch-action: none;
+  user-select: none;
+}
+
+.admin-crop-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  pointer-events: none;
+}
+
+.admin-crop-box {
+  position: absolute;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.55);
+  cursor: move;
+  touch-action: none;
+}
+
+.admin-crop-handle {
+  position: absolute;
+  right: -7px;
+  bottom: -7px;
+  width: 16px;
+  height: 16px;
+  background: #fff;
+  border: 2px solid #1a1a1a;
+  border-radius: 2px;
+  cursor: nwse-resize;
+}
+
+.admin-crop-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  justify-content: flex-end;
 }
 
 .admin-product-danger-zone {

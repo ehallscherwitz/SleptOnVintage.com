@@ -200,6 +200,24 @@ export const adminService = {
     }
   },
 
+  async downloadProductImage(
+    productId: number,
+    fileName: string
+  ): Promise<{ contentType?: string; dataBase64?: string; error?: string }> {
+    try {
+      const response = await fetch(ADMIN_API, {
+        method: 'POST',
+        headers: await authHeaders(),
+        body: JSON.stringify({ op: 'product-image-download', productId, fileName }),
+      });
+      const data = await parseJson(response);
+      if (!response.ok) return { error: data?.error || `HTTP ${response.status}` };
+      return { contentType: data.contentType as string, dataBase64: data.dataBase64 as string };
+    } catch (e) {
+      return { error: networkErrorHint(e) || 'Download failed' };
+    }
+  },
+
   async deleteProductImage(productId: number, fileName: string): Promise<{ error?: string }> {
     try {
       const response = await fetch(ADMIN_API, {

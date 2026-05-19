@@ -336,6 +336,41 @@ async function handleProductImageUpload(req: VercelRequest, res: VercelResponse,
   return res.status(200).json({ path, publicUrl, fileName });
 }
 
+function mimeFromFileName(fileName: string): string {
+  const ext = fileName.split('.').pop()?.toLowerCase();
+  if (ext === 'png') return 'image/png';
+  if (ext === 'webp') return 'image/webp';
+  if (ext === 'gif') return 'image/gif';
+  if (ext === 'jpg' || ext === 'jpeg') return 'image/jpeg';
+  return 'application/octet-stream';
+}
+
+async function handleProductImageDownload(req: VercelRequest, res: VercelResponse, auth: AdminOk) {
+  const body = parseBody(req);
+  const idRaw = body.productId;
+  const productId = typeof idRaw === 'number' ? idRaw : typeof idRaw === 'string' ? parseInt(idRaw, 10) : NaN;
+  if (!Number.isFinite(productId)) return res.status(400).json({ error: 'productId required' });
+
+  const fileName = String(body.fileName || '').trim().replace(/[/\\]/g, '');
+  if (!fileName || fileName.includes('..')) return res.status(400).json({ error: 'Invalid fileName' });
+
+  const { data: row, error: getErr } = await auth.service.from('products').select('id').eq('id', productId).maybeSingle();
+  if (getErr) return res.status(500).json({ error: getErr.message });
+  if (!row) return res.status(404).json({ error: 'Product not found' });
+
+  const bucket = (process.env.SUPABASE_PRODUCT_IMAGES_BUCKET || 'images').trim();
+  const prefixRow = { id: productId, storage_prefix: (row as { storage_prefix?: string | null }).storage_prefix ?? null };
+  const prefix = productStorageObjectPrefix(prefixRow);
+  const path = `${prefix}/${fileName}`;
+
+  const { data, error: dlErr } = await auth.service.storage.from(bucket).download(path);
+  if (dlErr || !data) return res.status(404).json({ error: dlErr?.message || 'Image not found' });
+
+  const buf = Buffer.from(await data.arrayBuffer());
+  const contentType = data.type && data.type.startsWith('image/') ? data.type : mimeFromFileName(fileName);
+  return res.status(200).json({ contentType, dataBase64: buf.toString('base64') });
+}
+
 async function handleProductImageDelete(req: VercelRequest, res: VercelResponse, auth: AdminOk) {
   const body = parseBody(req);
   const idRaw = body.productId;
@@ -522,6 +557,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return handleProductImagesList(req, res, auth);
     case 'product-image-upload':
       return handleProductImageUpload(req, res, auth);
+    case 'product-image-download':
+      return handleProductImageDownload(req, res, auth);
     case 'product-image-delete':
       return handleProductImageDelete(req, res, auth);
     case 'product-images-reorder':
