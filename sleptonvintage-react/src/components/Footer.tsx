@@ -1,6 +1,7 @@
 import React from 'react';
-
-const INSTAGRAM_URL = 'https://www.instagram.com/slept.on.vintage/';
+import { Link } from 'react-router-dom';
+import ContactButton from './ContactButton';
+import { INSTAGRAM_URL } from '../constants/legal';
 
 const Footer: React.FC = () => {
   return (
@@ -10,6 +11,13 @@ const Footer: React.FC = () => {
       </div>
       <div className="site-footer-line-scroll">
         <p className="site-footer-line">All items are preowned, check pictures for any signs of wear</p>
+      </div>
+      <div className="site-footer-line-scroll">
+        <nav className="site-footer-legal" aria-label="Legal and contact">
+          <Link to="/privacy">Privacy Policy</Link>
+          <Link to="/terms">Terms of Service</Link>
+          <ContactButton />
+        </nav>
       </div>
       <div className="site-footer-line-scroll">
         <a

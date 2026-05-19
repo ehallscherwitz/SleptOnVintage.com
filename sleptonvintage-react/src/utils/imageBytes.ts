@@ -40,6 +40,14 @@ export function base64ToBlob(dataBase64: string, contentType: string): Blob {
   return new Blob([bytes], { type: contentType });
 }
 
+export async function fetchUrlAsBase64(url: string): Promise<{ contentType: string; dataBase64: string }> {
+  const res = await fetch(url, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`Could not load image (HTTP ${res.status})`);
+  const blob = await res.blob();
+  const dataBase64 = await blobToBase64(blob);
+  return { contentType: blob.type || 'image/jpeg', dataBase64 };
+}
+
 export function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();

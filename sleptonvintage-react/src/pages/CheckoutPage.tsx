@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { checkoutService, getPromoResult, type CheckoutCartItem, type CustomerInfo, type ShippingInfo } from '../services/checkoutService';
 import { formatUsdFromCents } from '../utils/money';
 import { ProductThumbnail } from '../components/ProductThumbnail';
+import { RETURN_CLAIM_DAYS } from '../constants/legal';
 
 declare global {
   interface Window {
@@ -51,6 +52,7 @@ export const CheckoutPage: React.FC = () => {
   const [promoInput, setPromoInput] = useState('');
   const [appliedPromoCode, setAppliedPromoCode] = useState<string | null>(null);
   const [promoMessage, setPromoMessage] = useState<string | null>(null);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   useEffect(() => {
     if (user?.email) {
@@ -187,6 +189,11 @@ export const CheckoutPage: React.FC = () => {
       return;
     }
 
+    if (!agreedToTerms) {
+      setError('Please agree to the Terms of Service and Privacy Policy to place your order.');
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setPaymentStatus('idle');
@@ -299,6 +306,11 @@ export const CheckoutPage: React.FC = () => {
 
     if (missingFields.length > 0) {
       setError(`Please fill in: ${missingFields.join(', ')}`);
+      return;
+    }
+
+    if (!agreedToTerms) {
+      setError('Please agree to the Terms of Service and Privacy Policy to place your order.');
       return;
     }
 
@@ -544,11 +556,29 @@ export const CheckoutPage: React.FC = () => {
                   <div id="card-container" className="checkout-card-frame" />
                 </>
               )}
+              <label className="checkout-legal-row">
+                <input
+                  type="checkbox"
+                  checked={agreedToTerms}
+                  onChange={(e) => setAgreedToTerms(e.target.checked)}
+                />
+                <span className="checkout-legal-label">
+                  I agree to the{' '}
+                  <Link to="/terms" target="_blank" rel="noopener noreferrer">
+                    Terms of Service
+                  </Link>{' '}
+                  (all sales final; {RETURN_CLAIM_DAYS}-day exceptions for transit damage or wrong item) and{' '}
+                  <Link to="/privacy" target="_blank" rel="noopener noreferrer">
+                    Privacy Policy
+                  </Link>
+                  .
+                </span>
+              </label>
               <button
                 type="button"
                 className="checkout-btn-primary"
                 onClick={() => void handlePayNow()}
-                disabled={loading || (!isFreeCheckout && !paymentReady)}
+                disabled={loading || !agreedToTerms || (!isFreeCheckout && !paymentReady)}
               >
                 {loading
                   ? 'Processing…'

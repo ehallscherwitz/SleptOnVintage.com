@@ -97,23 +97,22 @@ async function syncProductAfterImageWrite(
     names = [];
   }
   const first = sortFileNames(names)[0];
-  const patch: { image?: string; updated_at: string } = {
-    updated_at: new Date().toISOString(),
-  };
-  if (!current || current === objectPath || current.endsWith(`/${fileName}`) || first === fileName) {
-    patch.image = objectPath;
+  const shouldSetImage =
+    !current || current === objectPath || current.endsWith(`/${fileName}`) || first === fileName;
+
+  if (shouldSetImage) {
+    const { error: imgErr } = await service.from('products').update({ image: objectPath }).eq('id', row.id);
+    if (imgErr) console.warn('sync products.image:', imgErr.message);
   }
-  const { data, error } = await service
+
+  const { error: tsErr } = await service
     .from('products')
-    .update(patch)
-    .eq('id', row.id)
-    .select('id, image')
-    .maybeSingle();
-  if (error) {
-    console.warn('sync product after image write:', error.message);
-    return row;
-  }
-  if (!data) return row;
+    .update({ updated_at: new Date().toISOString() })
+    .eq('id', row.id);
+  if (tsErr) console.warn('sync products.updated_at:', tsErr.message);
+
+  const { data, error } = await service.from('products').select('id, image').eq('id', row.id).maybeSingle();
+  if (error || !data) return row;
   return toProductStorageRow(data as { id: number; image?: string | null });
 }
 
@@ -389,10 +388,12 @@ async function handleProductImageUpload(req: VercelRequest, res: VercelResponse,
   const prefix = productStorageObjectPrefix(prefixRow);
   const path = `${prefix}/${fileName}`;
 
+  // Remove first so overwrites always stick (upsert alone can leave the old bytes on some Storage setups).
+  await auth.service.storage.from(bucket).remove([path]);
+
   const { error: upErr } = await auth.service.storage.from(bucket).upload(path, buffer, {
     contentType,
-    upsert: true,
-    cacheControl: '60',
+    cacheControl: '0',
   });
   if (upErr) return res.status(500).json({ error: upErr.message });
 

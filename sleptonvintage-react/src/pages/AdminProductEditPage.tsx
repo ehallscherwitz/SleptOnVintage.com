@@ -13,7 +13,7 @@ import {
 } from '../services/productService';
 import AdminImageCropModal from '../components/AdminImageCropModal';
 import { isAdminEmail } from '../utils/adminAccess';
-import { storageFileNameForContentType } from '../utils/imageBytes';
+import { fetchUrlAsBase64, storageFileNameForContentType } from '../utils/imageBytes';
 import { rotateImageBase64, type RotateDegrees } from '../utils/rotateImage';
 
 type CropSession = { fileName: string; contentType: string; dataBase64: string };
@@ -235,9 +235,25 @@ const AdminProductEditPage: React.FC = () => {
     setImageCacheBust((prev) => ({ ...prev, [fileName]: Date.now() }));
   };
 
+  const loadImageBytesForEdit = async (
+    fileName: string
+  ): Promise<{ contentType: string; dataBase64: string } | { error: string }> => {
+    const entry = files.find((f) => f.name === fileName);
+    if (entry) {
+      try {
+        return await fetchUrlAsBase64(imageSrc(entry.publicUrl, fileName));
+      } catch (ex) {
+        return { error: ex instanceof Error ? ex.message : 'Could not load image' };
+      }
+    }
+    const { contentType, dataBase64, error: dlErr } = await adminService.downloadProductImage(productId, fileName);
+    if (dlErr || !dataBase64) return { error: dlErr || 'Could not load image' };
+    return { contentType: contentType || 'image/jpeg', dataBase64 };
+  };
+
   const uploadImageBytes = async (fileName: string, contentType: string, dataBase64: string, successMsg: string) => {
     const { fileName: uploadName, replaceFileName } = storageFileNameForContentType(fileName, contentType);
-    const { error: upErr, product: uploadedProduct } = await adminService.uploadProductImageBase64({
+    const { error: upErr, path, product: uploadedProduct } = await adminService.uploadProductImageBase64({
       productId,
       fileName: uploadName,
       contentType,
@@ -248,7 +264,7 @@ const AdminProductEditPage: React.FC = () => {
       setErr(upErr);
       return false;
     }
-    setMsg(successMsg);
+    setMsg(path ? `${successMsg} (saved to ${path})` : successMsg);
     bumpImageCache(uploadName);
     if (replaceFileName) bumpImageCache(replaceFileName);
     invalidateListingThumbnailCacheForProduct(productId);
@@ -275,15 +291,15 @@ const AdminProductEditPage: React.FC = () => {
     setSaving(true);
     setErr(null);
     try {
-      const { contentType, dataBase64, error: dlErr } = await adminService.downloadProductImage(productId, fileName);
-      if (dlErr || !dataBase64) {
-        setErr(dlErr || 'Could not load image');
+      const loaded = await loadImageBytesForEdit(fileName);
+      if ('error' in loaded) {
+        setErr(loaded.error);
         return;
       }
       setCropSession({
         fileName,
-        contentType: contentType || 'image/jpeg',
-        dataBase64,
+        contentType: loaded.contentType,
+        dataBase64: loaded.dataBase64,
       });
     } catch (ex) {
       setErr(ex instanceof Error ? ex.message : 'Could not open crop tool');
@@ -316,18 +332,19 @@ const AdminProductEditPage: React.FC = () => {
     setSaving(true);
     setErr(null);
     try {
-      const { contentType, dataBase64, error: dlErr } = await adminService.downloadProductImage(productId, fileName);
-      if (dlErr || !dataBase64) {
-        setErr(dlErr || 'Could not load image');
+      const loaded = await loadImageBytesForEdit(fileName);
+      if ('error' in loaded) {
+        setErr(loaded.error);
         return;
       }
       const { base64, contentType: outType } = await rotateImageBase64(
-        dataBase64,
-        contentType || 'image/jpeg',
+        loaded.dataBase64,
+        loaded.contentType,
         degrees,
         fileName
       );
-      await uploadImageBytes(fileName, outType, base64, `Rotated ${fileName}`);
+      const ok = await uploadImageBytes(fileName, outType, base64, `Rotated ${fileName}`);
+      if (!ok) setErr((prev) => prev || 'Rotate did not save to Storage. Check the error above and redeploy the site API.');
     } catch (ex) {
       setErr(ex instanceof Error ? ex.message : 'Rotate failed');
     } finally {

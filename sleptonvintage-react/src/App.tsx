@@ -17,6 +17,8 @@ import AdminDashboardPage from './pages/AdminDashboardPage';
 import AdminProductsPage from './pages/AdminProductsPage';
 import AdminProductEditPage from './pages/AdminProductEditPage';
 import AdminNewListingPage from './pages/AdminNewListingPage';
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
+import TermsPage from './pages/TermsPage';
 import Footer from './components/Footer';
 import { ScrollToTop } from './components/ScrollToTop';
 
@@ -32,6 +34,7 @@ import './styles/search.css';
 import './styles/checkout.css';
 import './styles/admin.css';
 import './styles/footer.css';
+import './styles/legal.css';
 
 function App() {
   return (
@@ -60,6 +63,8 @@ function App() {
                 <Route path="/admin/products/new" element={<AdminNewListingPage />} />
                 <Route path="/admin/products/:id" element={<AdminProductEditPage />} />
                 <Route path="/auth/callback" element={<AuthCallback />} />
+                <Route path="/privacy" element={<PrivacyPolicyPage />} />
+                <Route path="/terms" element={<TermsPage />} />
               </Routes>
             </div>
             <Footer />
