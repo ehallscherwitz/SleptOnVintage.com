@@ -274,4 +274,22 @@ export const adminService = {
       return { error: networkErrorHint(e) || 'Request failed' };
     }
   },
+
+  async syncPinterestCatalog(): Promise<{
+    data?: { ok?: boolean; synced?: number; skipped?: number; errors?: string[] };
+    error?: string;
+  }> {
+    try {
+      const response = await fetch(ADMIN_API, {
+        method: 'POST',
+        headers: await authHeaders(),
+        body: JSON.stringify({ op: 'sync-pinterest-catalog' }),
+      });
+      const data = await parseJson(response);
+      if (!response.ok) return { error: data?.error || `HTTP ${response.status}` };
+      return { data };
+    } catch (e) {
+      return { error: networkErrorHint(e) || 'Request failed' };
+    }
+  },
 };

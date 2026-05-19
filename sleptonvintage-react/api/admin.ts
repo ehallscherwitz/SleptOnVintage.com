@@ -9,6 +9,12 @@ import { randomUUID } from 'crypto';
 import { requireAdmin, type AdminAuthResult } from '../server/adminAuth.js';
 import { productStorageObjectPrefix } from '../server/productStoragePrefix.js';
 import { listGalleryFileNames, publicUrlsForFiles, sortFileNames } from '../server/productImageUtils.js';
+import {
+  schedulePinterestDeleteProductIds,
+  schedulePinterestSyncProductIds,
+  syncAllPinterestProducts,
+} from '../server/pinterestSync.js';
+import { isPinterestCatalogConfigured } from '../server/pinterestCatalog.js';
 
 type AdminOk = Extract<AdminAuthResult, { ok: true }>;
 
@@ -113,7 +119,9 @@ async function syncProductAfterImageWrite(
 
   const { data, error } = await service.from('products').select('id, image').eq('id', row.id).maybeSingle();
   if (error || !data) return row;
-  return toProductStorageRow(data as { id: number; image?: string | null });
+  const next = toProductStorageRow(data as { id: number; image?: string | null });
+  schedulePinterestSyncProductIds([row.id]);
+  return next;
 }
 
 async function handleListOrders(_req: VercelRequest, res: VercelResponse, auth: AdminOk) {
@@ -228,6 +236,9 @@ async function handleCreateProduct(req: VercelRequest, res: VercelResponse, auth
 
   const { data, error } = await auth.service.from('products').insert(insert).select().maybeSingle();
   if (error) return res.status(500).json({ error: error.message });
+  if (data && typeof (data as { id?: number }).id === 'number') {
+    schedulePinterestSyncProductIds([(data as { id: number }).id]);
+  }
   return res.status(201).json({ product: data });
 }
 
@@ -282,6 +293,7 @@ async function handleUpdateProduct(req: VercelRequest, res: VercelResponse, auth
 
   const { data, error } = await auth.service.from('products').update(patch).eq('id', id).select().maybeSingle();
   if (error) return res.status(500).json({ error: error.message });
+  schedulePinterestSyncProductIds([id]);
   return res.status(200).json({ product: data });
 }
 
@@ -306,6 +318,8 @@ async function handleDeleteProduct(req: VercelRequest, res: VercelResponse, auth
   const { data: row, error: getErr } = await auth.service.from('products').select('id').eq('id', productId).maybeSingle();
   if (getErr) return res.status(500).json({ error: getErr.message });
   if (!row) return res.status(404).json({ error: 'Product not found' });
+
+  schedulePinterestDeleteProductIds([productId]);
 
   const bucket = (process.env.SUPABASE_PRODUCT_IMAGES_BUCKET || 'images').trim();
   const prefixRow = { id: productId, storage_prefix: (row as { storage_prefix?: string | null }).storage_prefix ?? null };
@@ -554,6 +568,7 @@ async function handleSetPrimaryImages(req: VercelRequest, res: VercelResponse, a
   let skipped = 0;
   let missing = 0;
   const sampleUpdates: Array<{ id: number; primary_image_path: string }> = [];
+  const updatedIds: number[] = [];
 
   for (const p of products || []) {
     const id = Number((p as { id: unknown }).id);
@@ -587,8 +602,11 @@ async function handleSetPrimaryImages(req: VercelRequest, res: VercelResponse, a
       continue;
     }
     updated += 1;
+    updatedIds.push(id);
     if (sampleUpdates.length < 20) sampleUpdates.push({ id, primary_image_path: path });
   }
+
+  if (updatedIds.length > 0) schedulePinterestSyncProductIds(updatedIds);
 
   return res.status(200).json({
     ok: true,
@@ -600,6 +618,19 @@ async function handleSetPrimaryImages(req: VercelRequest, res: VercelResponse, a
     skipped,
     missing,
     sampleUpdates,
+  });
+}
+
+async function handleSyncPinterestCatalog(_req: VercelRequest, res: VercelResponse) {
+  if (!isPinterestCatalogConfigured()) {
+    return res.status(503).json({
+      error: 'Pinterest not configured. Set PINTEREST_ACCESS_TOKEN in Vercel env.',
+    });
+  }
+  const result = await syncAllPinterestProducts();
+  return res.status(200).json({
+    ok: result.errors.length === 0,
+    ...result,
   });
 }
 
@@ -648,6 +679,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return handleProductImagesReorder(req, res, auth);
     case 'set-primary-images':
       return handleSetPrimaryImages(req, res, auth);
+    case 'sync-pinterest-catalog':
+      return handleSyncPinterestCatalog(req, res, auth);
     default:
       return res.status(400).json({ error: 'Missing or unknown op in JSON body' });
   }

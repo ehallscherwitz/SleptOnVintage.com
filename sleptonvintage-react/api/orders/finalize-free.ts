@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import { schedulePinterestSyncProductIds } from '../../server/pinterestSync.js';
 
 function parseBody(req: VercelRequest): Record<string, unknown> {
   try {
@@ -212,6 +213,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         error: finalizeError.message || 'Could not complete order.',
       });
     }
+
+    schedulePinterestSyncProductIds(productIds);
 
     return res.status(200).json({
       success: true,

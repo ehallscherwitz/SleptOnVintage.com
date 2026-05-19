@@ -55,19 +55,25 @@ npm run sitemap
 npm run pinterest-catalog
 ```
 
-## Pinterest catalog + Rich Pins
+## Pinterest Shopping API (live sync)
 
-After deploy, the product feed is at:
+**Env vars (Vercel → Production):**
 
-```text
-https://sleptonvintage.com/pinterest-catalog.csv
-```
+| Variable | Purpose |
+|----------|---------|
+| `PINTEREST_ACCESS_TOKEN` | Bearer token with **catalogs** scopes ([Pinterest developers](https://developers.pinterest.com/apps/)) |
+| `PINTEREST_AD_ACCOUNT_ID` | Optional — if your catalog is under a specific ad account |
 
-**Catalog (auto sync, Shopify-like):** Pinterest Business → Catalogs → Add data source → **Provide a URL link** → paste the feed URL above → daily ingest.
+**What syncs automatically (no deploy needed):**
 
-**Rich Pins:** After deploy, validate a product URL at [Pinterest URL debugger](https://developers.pinterest.com/tools/url-debugger/) and enable Product Rich Pins when offered.
+- Admin create/update product, image upload, set primary images
+- Checkout / free checkout when an item sells → `out of stock` on Pinterest
 
-Redeploy (`vercel --prod`) after inventory changes so the CSV and sitemap update; Pinterest re-fetches on its schedule (~daily).
+**First-time full import:** Admin dashboard → **Sync all to Pinterest** (or POST admin `{ "op": "sync-pinterest-catalog" }`).
+
+**Backup feed (optional):** `https://sleptonvintage.com/pinterest-catalog.csv` — still regenerated on deploy if you use URL ingest in Pinterest.
+
+**Rich Pins:** [URL debugger](https://developers.pinterest.com/tools/url-debugger/) on a product URL → enable Product Rich Pins once.
 
 ## Supabase SQL scripts (run in Supabase Dashboard → SQL Editor)
 

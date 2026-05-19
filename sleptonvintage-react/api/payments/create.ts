@@ -2,6 +2,7 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { getSquareClient, toNumberAmount } from '../../server/squareClient';
 import { refundSquarePayment } from '../../server/squareRefund';
+import { schedulePinterestSyncProductIds } from '../../server/pinterestSync.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -104,6 +105,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         p_shipping: shippingAmount,
         p_total: totalAmount,
       });
+
+      if (!finalizeError && supabaseOrderId) {
+        const { data: orderItems } = await supabase
+          .from('order_items')
+          .select('product_id')
+          .eq('order_id', supabaseOrderId);
+        const soldIds = (orderItems ?? [])
+          .map((row: { product_id: number }) => row.product_id)
+          .filter((id: number) => Number.isFinite(id));
+        schedulePinterestSyncProductIds(soldIds);
+      }
 
       if (finalizeError) {
         const finalizeMsg = finalizeError.message || 'Order finalization failed';

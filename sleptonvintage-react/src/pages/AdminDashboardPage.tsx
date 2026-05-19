@@ -66,6 +66,8 @@ const AdminDashboardPage: React.FC = () => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [settingPrimaryImages, setSettingPrimaryImages] = useState(false);
   const [primaryImagesResult, setPrimaryImagesResult] = useState<string | null>(null);
+  const [syncingPinterest, setSyncingPinterest] = useState(false);
+  const [pinterestSyncResult, setPinterestSyncResult] = useState<string | null>(null);
 
   const [editing, setEditing] = useState<{
     orderId: string;
@@ -165,6 +167,26 @@ const AdminDashboardPage: React.FC = () => {
     );
   };
 
+  const syncPinterestCatalog = async () => {
+    const ok = window.confirm(
+      'Push all in-stock listings to Pinterest now?\n\nRequires PINTEREST_ACCESS_TOKEN on the server. Edits usually sync automatically; use this for the first import or a full refresh.'
+    );
+    if (!ok) return;
+
+    setSyncingPinterest(true);
+    setPinterestSyncResult(null);
+    const { data, error } = await adminService.syncPinterestCatalog();
+    setSyncingPinterest(false);
+    if (error) {
+      setPinterestSyncResult(`Error: ${error}`);
+      return;
+    }
+    const errs = data?.errors?.length ? ` · Errors: ${data.errors.join('; ')}` : '';
+    setPinterestSyncResult(
+      `Pinterest: synced ${data?.synced ?? 0} · skipped ${data?.skipped ?? 0} (no image)${errs}`
+    );
+  };
+
   if (authLoading) {
     return (
       <div className="admin-page">
@@ -218,20 +240,37 @@ const AdminDashboardPage: React.FC = () => {
             <div>
               <div style={{ fontWeight: 700, color: 'white' }}>Admin tools</div>
               <div className="admin-muted" style={{ marginTop: 4 }}>
-                Auto-fill `products.image` from the first Storage image in `images/products/&lt;slug-or-id&gt;/`.
+                Storage primary images · Pinterest syncs when you save listings (server token required).
               </div>
             </div>
-            <button
-              type="button"
-              className="checkout-btn-primary"
-              onClick={() => void setPrimaryImagesFromStorage()}
-              disabled={settingPrimaryImages || loading}
-              style={{ width: 220, minWidth: 220 }}
-            >
-              {settingPrimaryImages ? 'Setting images…' : 'Set primary images'}
-            </button>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className="checkout-btn-primary"
+                onClick={() => void setPrimaryImagesFromStorage()}
+                disabled={settingPrimaryImages || loading}
+                style={{ width: 220, minWidth: 220 }}
+              >
+                {settingPrimaryImages ? 'Setting images…' : 'Set primary images'}
+              </button>
+              <button
+                type="button"
+                className="admin-btn-secondary"
+                onClick={() => void syncPinterestCatalog()}
+                disabled={syncingPinterest || loading}
+                style={{ width: 220, minWidth: 220 }}
+              >
+                {syncingPinterest ? 'Syncing Pinterest…' : 'Sync all to Pinterest'}
+              </button>
+            </div>
           </div>
         </div>
+
+        {pinterestSyncResult && (
+          <div className="checkout-alert checkout-alert--info" style={{ marginBottom: 14 }}>
+            {pinterestSyncResult}
+          </div>
+        )}
 
         {primaryImagesResult && (
           <div className="checkout-alert checkout-alert--info" style={{ marginBottom: 14 }}>
