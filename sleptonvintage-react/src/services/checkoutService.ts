@@ -61,6 +61,13 @@ const TEN_OFF_PROMO_CODES = new Set([
   'PEDXING',
 ]);
 
+/** Postgres bigint / JSON often arrives as number or string; keep checkout math numeric. */
+function priceCents(value: unknown): number {
+  const n = typeof value === 'string' ? Number.parseInt(value, 10) : Number(value);
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.round(n));
+}
+
 function evaluatePromo(code?: string | null): PromoResult {
   const normalized = normalizePromoCode(code);
   if (TEN_OFF_PROMO_CODES.has(normalized)) {
@@ -138,10 +145,11 @@ export const checkoutService = {
       const normalized: CheckoutCartItem[] = (cartItems || []).map((row: any) => {
         const productRaw = row.product;
         const product = Array.isArray(productRaw) ? productRaw[0] : productRaw;
+        const p = product ? { ...product, price: priceCents(product.price) } : product;
         return {
           id: row.id,
           product_id: row.product_id,
-          product,
+          product: p,
         };
       }).filter((row: any) => row.product);
 
@@ -178,6 +186,41 @@ export const checkoutService = {
       return { data: parsed.data, error: null };
     } catch (err) {
       console.error('Error creating order:', err);
+      return { data: null, error: err };
+    }
+  },
+
+  /** Complete checkout without Square when server-validated total is $0 (free items / fully discounted). */
+  async finalizeFreeOrder(
+    customerInfo: CustomerInfo,
+    shippingInfo: ShippingInfo,
+    promoCode?: string
+  ): Promise<{ data: any; error: any }> {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+      if (!accessToken) {
+        return { data: null, error: { message: 'Sign in required.' } };
+      }
+
+      const response = await fetch('/api/orders/finalize-free', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          customerInfo,
+          shippingInfo,
+          promoCode: normalizePromoCode(promoCode),
+        }),
+      });
+
+      const parsed = await this.parseResponse(response);
+      if (!parsed.ok) return { data: null, error: { message: parsed.errorMessage || 'Could not complete order' } };
+      return { data: parsed.data, error: null };
+    } catch (err) {
+      console.error('Error finalizing free order:', err);
       return { data: null, error: err };
     }
   },
@@ -227,7 +270,7 @@ export const checkoutService = {
     cartItems: CheckoutCartItem[],
     promoCode?: string
   ): { subtotal: number; discount: number; tax: number; total: number; promo: PromoResult } {
-    const subtotal = cartItems.reduce((sum, item) => sum + item.product.price, 0);
+    const subtotal = cartItems.reduce((sum, item) => sum + priceCents(item.product.price), 0);
     const promo = evaluatePromo(promoCode);
     const discount = promo.applied ? Math.round(subtotal * promo.discountRate) : 0;
     const discountedSubtotal = Math.max(0, subtotal - discount);

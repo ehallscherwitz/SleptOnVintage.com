@@ -58,6 +58,12 @@ export const CheckoutPage: React.FC = () => {
     }
   }, [user?.email]);
 
+  const totals = useMemo(
+    () => checkoutService.calculateTotals(cartItems, appliedPromoCode || undefined),
+    [cartItems, appliedPromoCode],
+  );
+  const isFreeCheckout = totals.total === 0;
+
   const squareConfig = useMemo(() => {
     const applicationId = import.meta.env.VITE_SQUARE_APPLICATION_ID as string | undefined;
     const locationId = import.meta.env.VITE_SQUARE_LOCATION_ID as string | undefined;
@@ -91,6 +97,10 @@ export const CheckoutPage: React.FC = () => {
       setInitialLoad(false);
     }
   }, [user]);
+
+  useEffect(() => {
+    if (isFreeCheckout) setPendingSquareOrder(null);
+  }, [isFreeCheckout]);
 
   async function ensureSquareCardMounted() {
     const { applicationId, locationId, isSandbox } = squareConfig;
@@ -128,6 +138,11 @@ export const CheckoutPage: React.FC = () => {
     let cancelled = false;
     async function init() {
       if (!user || initialLoad || cartItems.length === 0) return;
+      if (isFreeCheckout) {
+        setPaymentReady(true);
+        setPaymentStatus('ready');
+        return;
+      }
       try {
         setPaymentStatus('loading');
         // Let the card container render in the current frame first.
@@ -150,7 +165,7 @@ export const CheckoutPage: React.FC = () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, initialLoad, cartItems.length]);
+  }, [user, initialLoad, cartItems.length, isFreeCheckout]);
 
   const handlePayNow = async () => {
     if (cartItems.length === 0) {
@@ -177,6 +192,31 @@ export const CheckoutPage: React.FC = () => {
     setPaymentStatus('idle');
 
     try {
+      const finishFreeCheckout = async () => {
+        const { data: freeData, error: freeErr } = await checkoutService.finalizeFreeOrder(
+          customerInfo,
+          shippingInfo,
+          appliedPromoCode || undefined,
+        );
+        if (freeErr) throw new Error((freeErr as { message?: string }).message || 'Order failed');
+        const supabaseOrderId = freeData?.supabaseOrderId as string | undefined;
+        await resetCart();
+        setCartItems([]);
+        if (supabaseOrderId) {
+          navigate(`/orders/${supabaseOrderId}`, { state: { checkoutSuccess: true } });
+        } else {
+          navigate('/orders', { state: { checkoutSuccess: true } });
+        }
+      };
+
+      // Use freshly computed totals (not only isFreeCheckout) — Supabase bigint prices can be strings
+      // which used to yield NaN / wrong totals so we'd incorrectly hit Square tokenize().
+      const payTotals = checkoutService.calculateTotals(cartItems, appliedPromoCode || undefined);
+      if (payTotals.total === 0) {
+        await finishFreeCheckout();
+        return;
+      }
+
       await ensureSquareCardMounted();
 
       // Step 1: create the Square order so we can show the exact total Square will charge.
@@ -198,6 +238,13 @@ export const CheckoutPage: React.FC = () => {
           promoCode: orderData?.promo?.code ?? appliedPromoCode ?? null,
         });
         setLoading(false);
+        return;
+      }
+
+      const totalsBeforePay = checkoutService.calculateTotals(cartItems, appliedPromoCode || undefined);
+      if (totalsBeforePay.total === 0) {
+        setPendingSquareOrder(null);
+        await finishFreeCheckout();
         return;
       }
 
@@ -281,7 +328,6 @@ export const CheckoutPage: React.FC = () => {
     }
   };
 
-  const totals = checkoutService.calculateTotals(cartItems, appliedPromoCode || undefined);
   const displayTotals = pendingSquareOrder?.totals?.total != null ? pendingSquareOrder.totals : totals;
 
   const applyPromo = () => {
@@ -358,10 +404,14 @@ export const CheckoutPage: React.FC = () => {
       <Header />
       <div className="checkout-inner">
         <PageHeadingRow title="Checkout" />
-        <p className="checkout-subtitle">Review your order, enter shipping details, and pay securely.</p>
+        <p className="checkout-subtitle">
+          {isFreeCheckout
+            ? 'Review your order and shipping details — no payment required for $0 orders.'
+            : 'Review your order, enter shipping details, and pay securely.'}
+        </p>
 
         {error && <div className="checkout-alert checkout-alert--error">{error}</div>}
-        {!paymentReady && paymentStatus === 'unavailable' && (
+        {!isFreeCheckout && !paymentReady && paymentStatus === 'unavailable' && (
           <div className="checkout-alert checkout-alert--info">
             Payment form is temporarily unavailable. Please refresh and try again.
           </div>
@@ -481,17 +531,34 @@ export const CheckoutPage: React.FC = () => {
             </section>
 
             <section className="checkout-section">
-              <h2>Payment</h2>
-              <p className="checkout-hint">Card details are collected securely by Square.</p>
-              <div id="card-container" className="checkout-card-frame" />
-              <button type="button" className="checkout-btn-primary" onClick={() => void handlePayNow()} disabled={loading || !paymentReady}>
+              <h2>{isFreeCheckout ? 'Complete order' : 'Payment'}</h2>
+              {isFreeCheckout ? (
+                <p className="checkout-hint">
+                  This order total is $0.00 — no card required. Click below to confirm shipping details and place your order.
+                  {' '}
+                  Limit one complimentary checkout per account per calendar day (only one $0 listing in the cart at a time).
+                </p>
+              ) : (
+                <>
+                  <p className="checkout-hint">Card details are collected securely by Square.</p>
+                  <div id="card-container" className="checkout-card-frame" />
+                </>
+              )}
+              <button
+                type="button"
+                className="checkout-btn-primary"
+                onClick={() => void handlePayNow()}
+                disabled={loading || (!isFreeCheckout && !paymentReady)}
+              >
                 {loading
                   ? 'Processing…'
-                  : pendingSquareOrder
-                    ? `Confirm & Pay $${formatUsdFromCents(displayTotals.total ?? totals.total)}`
-                    : 'Review total (Square)'}
+                  : isFreeCheckout
+                    ? 'Place order'
+                    : pendingSquareOrder
+                      ? `Confirm & Pay $${formatUsdFromCents(displayTotals.total ?? totals.total)}`
+                      : 'Review total (Square)'}
               </button>
-              {pendingSquareOrder && (
+              {!isFreeCheckout && pendingSquareOrder && (
                 <p className="checkout-hint" style={{ marginTop: 10 }}>
                   Total above is pulled from Square’s order calculation. Clicking “Confirm” will charge that exact amount.
                 </p>
