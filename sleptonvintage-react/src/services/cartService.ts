@@ -17,6 +17,11 @@ export interface Cart {
   items?: CartItem[];
 }
 
+export type PrunedSoldCartItem = {
+  product_id: number;
+  name: string;
+};
+
 export const cartService = {
   // Get or create user's cart
   async getOrCreateCart(): Promise<{ data: Cart | null; error: any }> {
@@ -171,6 +176,28 @@ export const cartService = {
       .eq('cart_id', cart.id);
 
     return { data: data || [], error };
+  },
+
+  /** Remove cart lines for products that are no longer available (sold). */
+  async pruneUnavailableFromCart(): Promise<{ removed: PrunedSoldCartItem[]; error: any }> {
+    const { data: rows, error } = await this.getCartItemsWithProducts();
+    if (error) return { removed: [], error };
+
+    const removed: PrunedSoldCartItem[] = [];
+
+    for (const row of rows || []) {
+      const productRaw = (row as { product?: unknown }).product;
+      const product = Array.isArray(productRaw) ? productRaw[0] : productRaw;
+      if (!product || (product as { available?: boolean }).available !== false) continue;
+
+      const productId = (row as { product_id: number }).product_id;
+      const name = String((product as { name?: string }).name || `Item #${productId}`);
+      const { error: removeErr } = await this.removeFromCart(productId);
+      if (removeErr) return { removed, error: removeErr };
+      removed.push({ product_id: productId, name });
+    }
+
+    return { removed, error: null };
   },
 
   // Sync localStorage cart to database (for when user signs in)

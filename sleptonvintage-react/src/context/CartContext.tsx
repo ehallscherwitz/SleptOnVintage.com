@@ -1,7 +1,8 @@
 // Cart Context for managing cart state across the application
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useCallback, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
-import { cartService, type CartItem } from '../services/cartService';
+import { cartService, type CartItem, type PrunedSoldCartItem } from '../services/cartService';
+import { productService } from '../services/productService';
 import type { ReactNode } from 'react';
 
 interface CartContextType {
@@ -12,6 +13,10 @@ interface CartContextType {
   cartCount: number;
   loading: boolean;
   error: string | null;
+  /** Items removed from cart because they sold while in cart (latest prune pass). */
+  soldRemovedFromCart: PrunedSoldCartItem[];
+  clearSoldRemovedFromCart: () => void;
+  refreshCart: () => Promise<void>;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -25,6 +30,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [soldRemovedFromCart, setSoldRemovedFromCart] = useState<PrunedSoldCartItem[]>([]);
 
   // Load cart when user changes
   useEffect(() => {
@@ -62,11 +68,40 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     await loadCartFromDatabase();
   };
 
-  const loadCartFromDatabase = async () => {
+  const pruneSoldFromLocalCart = async (items: CartItem[]): Promise<{ items: CartItem[]; removed: PrunedSoldCartItem[] }> => {
+    if (items.length === 0) return { items, removed: [] };
+    try {
+      const products = await productService.getAllProducts();
+      const byId = new Map(products.map((p) => [p.id, p]));
+      const removed: PrunedSoldCartItem[] = [];
+      const kept = items.filter((item) => {
+        const p = byId.get(item.product_id);
+        if (p && !p.available) {
+          removed.push({ product_id: p.id, name: p.name });
+          return false;
+        }
+        return true;
+      });
+      if (removed.length > 0) {
+        const localCart = kept.map((item) => ({ id: item.product_id }));
+        localStorage.setItem('cart', JSON.stringify(localCart));
+      }
+      return { items: kept, removed };
+    } catch (err) {
+      console.error('Error pruning local cart:', err);
+      return { items, removed: [] };
+    }
+  };
+
+  const loadCartFromDatabase = useCallback(async () => {
     setLoading(true);
     setError(null);
     
     try {
+      const { removed, error: pruneErr } = await cartService.pruneUnavailableFromCart();
+      if (pruneErr) throw pruneErr;
+      if (removed.length > 0) setSoldRemovedFromCart(removed);
+
       const { data, error } = await cartService.getCartWithItems();
       if (error) throw error;
       
@@ -77,27 +112,30 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
-  const loadCartFromLocalStorage = () => {
+  const loadCartFromLocalStorage = useCallback(async () => {
     const savedCart = localStorage.getItem('cart');
-    if (savedCart) {
-      try {
-        const localCart = JSON.parse(savedCart);
-        // Convert localStorage format to CartItem format
-        const cartItems = localCart.map((item: any) => ({
-          id: `local-${item.id}`,
-          cart_id: 'local',
-          product_id: item.id,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }));
-        setCart(cartItems);
-      } catch (err) {
-        console.error('Error parsing localStorage cart:', err);
-      }
+    if (!savedCart) {
+      setCart([]);
+      return;
     }
-  };
+    try {
+      const localCart = JSON.parse(savedCart);
+      const cartItems: CartItem[] = localCart.map((item: { id: number }) => ({
+        id: `local-${item.id}`,
+        cart_id: 'local',
+        product_id: item.id,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }));
+      const { items, removed } = await pruneSoldFromLocalCart(cartItems);
+      if (removed.length > 0) setSoldRemovedFromCart(removed);
+      setCart(items);
+    } catch (err) {
+      console.error('Error parsing localStorage cart:', err);
+    }
+  }, []);
 
   const addToCart = async (productId: number) => {
     if (!user) {
@@ -214,6 +252,13 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
 
   const cartCount = cart.length;
 
+  const clearSoldRemovedFromCart = () => setSoldRemovedFromCart([]);
+
+  const refreshCart = useCallback(async () => {
+    if (user) await loadCartFromDatabase();
+    else await loadCartFromLocalStorage();
+  }, [user, loadCartFromDatabase, loadCartFromLocalStorage]);
+
   const value: CartContextType = {
     cart,
     addToCart,
@@ -221,7 +266,10 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     resetCart,
     cartCount,
     loading,
-    error
+    error,
+    soldRemovedFromCart,
+    clearSoldRemovedFromCart,
+    refreshCart,
   };
 
   return (

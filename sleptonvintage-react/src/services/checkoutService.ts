@@ -130,7 +130,8 @@ export const checkoutService = {
             price,
             size,
             image,
-            category
+            category,
+            available
           )
         `)
         .eq('cart_id', cart.id);
@@ -151,7 +152,9 @@ export const checkoutService = {
           product_id: row.product_id,
           product: p,
         };
-      }).filter((row: any) => row.product);
+      })
+        .filter((row: any) => row.product)
+        .filter((row: any) => row.product.available !== false);
 
       return { data: normalized, error: null };
     } catch (err) {

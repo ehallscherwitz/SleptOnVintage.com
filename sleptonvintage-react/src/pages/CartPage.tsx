@@ -4,14 +4,19 @@ import { Link } from 'react-router-dom';
 import Header from '../components/Header';
 import { PageHeadingRow } from '../components/PageHeadingRow';
 import { useCart } from '../context/CartContext';
+import { SoldCartNotice } from '../components/SoldCartNotice';
 import { ProductThumbnail } from '../components/ProductThumbnail';
 import { productService, type Product } from '../services/productService';
 import { formatUsdFromCents } from '../utils/money';
 
 const CartPage: React.FC = () => {
-  const { cart, removeFromCart } = useCart();
+  const { cart, removeFromCart, soldRemovedFromCart, clearSoldRemovedFromCart, refreshCart } = useCart();
   const [cartProducts, setCartProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    void refreshCart();
+  }, []);
 
   useEffect(() => {
     const fetchCartProducts = async () => {
@@ -22,7 +27,7 @@ const CartPage: React.FC = () => {
         const cartProductsWithDetails = cart
           .map((cartItem) => {
             const product = products.find((p) => p.id === cartItem.product_id);
-            return product || null;
+            return product && product.available ? product : null;
           })
           .filter(Boolean) as Product[];
 
@@ -61,16 +66,13 @@ const CartPage: React.FC = () => {
   return (
     <div className="cart-page-wrap">
       <Header />
+      <PageHeadingRow title="Your Cart" />
+      <SoldCartNotice items={soldRemovedFromCart} onDismiss={clearSoldRemovedFromCart} />
 
-      {cart.length === 0 ? (
-        <>
-          <PageHeadingRow title="Your Cart" />
-          <div className="subheader">Your cart is empty!</div>
-        </>
+      {cartProducts.length === 0 ? (
+        <div className="subheader">Your cart is empty!</div>
       ) : (
         <>
-          <PageHeadingRow title="Your Cart" />
-
           <div className="cart-grid">
             <div className="product-grid">
               {cartProducts.map((product) => (

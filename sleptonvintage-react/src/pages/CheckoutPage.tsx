@@ -4,6 +4,7 @@ import Header from '../components/Header';
 import { PageHeadingRow } from '../components/PageHeadingRow';
 import AuthModal from '../components/AuthModal';
 import { useCart } from '../context/CartContext';
+import { SoldCartNotice } from '../components/SoldCartNotice';
 import { useAuth } from '../context/AuthContext';
 import { checkoutService, getPromoResult, type CheckoutCartItem, type CustomerInfo, type ShippingInfo } from '../services/checkoutService';
 import { formatUsdFromCents } from '../utils/money';
@@ -18,7 +19,7 @@ declare global {
 
 export const CheckoutPage: React.FC = () => {
   const navigate = useNavigate();
-  const { resetCart } = useCart();
+  const { resetCart, soldRemovedFromCart, clearSoldRemovedFromCart, refreshCart } = useCart();
   const { user } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [cartItems, setCartItems] = useState<CheckoutCartItem[]>([]);
@@ -78,6 +79,7 @@ export const CheckoutPage: React.FC = () => {
     const loadCartItems = async () => {
       setInitialLoad(true);
       try {
+        await refreshCart();
         const { data, error: loadErr } = await checkoutService.getCartItemsForCheckout();
         if (loadErr) {
           setError(loadErr.message || 'Failed to load cart items');
@@ -282,7 +284,13 @@ export const CheckoutPage: React.FC = () => {
         navigate('/orders', { state: { checkoutSuccess: true } });
       }
     } catch (err: any) {
-      setError(err?.message || 'Checkout failed');
+      const msg = err?.message || 'Checkout failed';
+      setError(msg);
+      if (/refunded/i.test(msg)) {
+        await refreshCart();
+        setCartItems([]);
+        setPendingSquareOrder(null);
+      }
       console.error('Checkout error:', err);
     } finally {
       setLoading(false);
@@ -396,6 +404,7 @@ export const CheckoutPage: React.FC = () => {
         <Header />
         <div className="checkout-inner checkout-empty">
           <PageHeadingRow title="Checkout" />
+          <SoldCartNotice items={soldRemovedFromCart} onDismiss={clearSoldRemovedFromCart} />
           <p>Your cart is empty.</p>
           <p>
             <Link to="/" className="checkout-link">
@@ -421,6 +430,8 @@ export const CheckoutPage: React.FC = () => {
             ? 'Review your order and shipping details — no payment required for $0 orders.'
             : 'Review your order, enter shipping details, and pay securely.'}
         </p>
+
+        <SoldCartNotice items={soldRemovedFromCart} onDismiss={clearSoldRemovedFromCart} />
 
         {error && <div className="checkout-alert checkout-alert--error">{error}</div>}
         {!isFreeCheckout && !paymentReady && paymentStatus === 'unavailable' && (

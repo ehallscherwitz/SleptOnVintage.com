@@ -1,29 +1,7 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { SquareClient, SquareEnvironment } from 'square';
-import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
-
-function getSquareEnvironment() {
-  const env = (process.env.SQUARE_ENV || '').toLowerCase();
-  if (env === 'sandbox') return SquareEnvironment.Sandbox;
-  if (env === 'production') return SquareEnvironment.Production;
-  return process.env.NODE_ENV === 'production' ? SquareEnvironment.Production : SquareEnvironment.Sandbox;
-}
-
-function getSquareClient() {
-  // Construct client at request-time so missing/invalid env vars don't crash the function at import time.
-  return new SquareClient({
-    token: process.env.SQUARE_ACCESS_TOKEN!,
-    environment: getSquareEnvironment(),
-  });
-}
-
-function toNumberAmount(v: unknown): number {
-  if (typeof v === 'bigint') return Number(v);
-  if (typeof v === 'number') return v;
-  if (typeof v === 'string') return Number(v);
-  return 0;
-}
+import { getSquareClient, toNumberAmount } from '../../server/squareClient';
+import { refundSquarePayment } from '../../server/squareRefund';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -128,9 +106,43 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
 
       if (finalizeError) {
+        const finalizeMsg = finalizeError.message || 'Order finalization failed';
+        const inventoryLost =
+          /no longer available/i.test(finalizeMsg) || /cart is empty/i.test(finalizeMsg);
+
+        let refunded = false;
+        let refundNote: string | undefined;
+        if (inventoryLost && result.payment.id) {
+          const refund = await refundSquarePayment(
+            result.payment.id,
+            'Item sold before order could be completed',
+          );
+          refunded = refund.ok;
+          if (!refund.ok) {
+            refundNote = refund.message;
+            console.error('Auto-refund failed after finalize_order:', refund.message, {
+              paymentId: result.payment.id,
+              finalizeMsg,
+            });
+          }
+        }
+
+        if (refunded) {
+          return res.status(409).json({
+            error:
+              'An item in your cart was just sold to someone else. Your payment has been refunded.',
+            message: finalizeMsg,
+            refunded: true,
+          });
+        }
+
         return res.status(500).json({
-          error: 'Payment succeeded but order finalization failed',
-          message: finalizeError.message,
+          error: inventoryLost
+            ? 'Payment succeeded but the item is no longer available. We could not automatically refund — contact us with your payment confirmation.'
+            : 'Payment succeeded but order finalization failed',
+          message: finalizeMsg,
+          refunded: false,
+          refundError: refundNote,
         });
       }
 
