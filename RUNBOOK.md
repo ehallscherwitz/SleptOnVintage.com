@@ -48,6 +48,12 @@ cd "C:\Users\ehall\OneDrive\Desktop\sleptonvintage.com\sleptonvintage-react"
 npm run build
 ```
 
+Build runs `scripts/generate-sitemap.mjs` (needs `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` in Vercel **Build** env). After deploy, open `/sitemap.xml` and search for `/product/`.
+
+```powershell
+npm run sitemap
+```
+
 ## Supabase SQL scripts (run in Supabase Dashboard → SQL Editor)
 
 - **Schema (manual)**: `supabase-manual-schema.sql`

@@ -1,31 +1,25 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+/**
+ * Writes public/sitemap.xml at build time (Vercel injects VITE_* into process.env).
+ * Run: node scripts/generate-sitemap.mjs
+ */
+import dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
+
+dotenv.config();
+dotenv.config({ path: '.env.local', override: true });
+import { writeFileSync } from 'fs';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const ROOT = join(__dirname, '..');
+const OUT = join(ROOT, 'public', 'sitemap.xml');
 
 const SITE_URL = 'https://sleptonvintage.com';
 const IMAGES_BUCKET =
   process.env.VITE_SUPABASE_PRODUCT_IMAGES_BUCKET?.trim() ||
   process.env.SUPABASE_PRODUCT_IMAGES_BUCKET?.trim() ||
   'images';
-
-function supabaseEnv(): { url: string; key: string } | null {
-  const url = process.env.SUPABASE_URL?.trim() || process.env.VITE_SUPABASE_URL?.trim();
-  const key =
-    process.env.SUPABASE_ANON_KEY?.trim() || process.env.VITE_SUPABASE_ANON_KEY?.trim();
-  if (!url || !key) return null;
-  return { url, key };
-}
-
-function xmlEscape(s: string | null | undefined): string {
-  return String(s ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
-function productImageAlt(name: string, size: string, category: string): string {
-  return `Vintage ${name} — pre-owned thrift ${category} size ${size}`;
-}
 
 const STATIC_PATHS = [
   '/',
@@ -41,18 +35,29 @@ const STATIC_PATHS = [
   '/contact',
 ];
 
-export default async function handler(_req: VercelRequest, res: VercelResponse) {
-  const env = supabaseEnv();
+function xmlEscape(s) {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
 
-  let productRows: {
-    id: number;
-    name: string;
-    size: string;
-    category: string;
-    available: boolean;
-    image: string | null;
-    created_at: string | null;
-  }[] = [];
+function productImageAlt(name, size, category) {
+  return `Vintage ${name} — pre-owned thrift ${category} size ${size}`;
+}
+
+function supabaseEnv() {
+  const url = process.env.VITE_SUPABASE_URL?.trim() || process.env.SUPABASE_URL?.trim();
+  const key =
+    process.env.VITE_SUPABASE_ANON_KEY?.trim() || process.env.SUPABASE_ANON_KEY?.trim();
+  if (!url || !key) return null;
+  return { url, key };
+}
+
+async function main() {
+  const env = supabaseEnv();
+  let productRows = [];
 
   if (env) {
     const supabase = createClient(env.url, env.key);
@@ -60,14 +65,20 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
       .from('products')
       .select('id, name, size, category, available, image, created_at')
       .order('id', { ascending: true });
+
     if (error) {
-      console.error('sitemap: products query failed', error.message);
-    } else {
-      productRows = (data ?? []) as typeof productRows;
+      console.error('Sitemap: Supabase query failed:', error.message);
+      process.exit(1);
     }
+    productRows = data ?? [];
+    console.log(`Sitemap: ${productRows.length} products from Supabase`);
+  } else {
+    console.warn(
+      'Sitemap: missing VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY — static pages only.',
+    );
   }
 
-  const urls: string[] = [];
+  const urls = [];
 
   for (const path of STATIC_PATHS) {
     urls.push(
@@ -77,7 +88,7 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
 
   for (const p of productRows) {
     const loc = `${SITE_URL}/product/${p.id}`;
-    const lastmod = p.created_at ? p.created_at.slice(0, 10) : undefined;
+    const lastmod = p.created_at ? String(p.created_at).slice(0, 10) : undefined;
     const alt = productImageAlt(p.name, p.size, p.category);
 
     let imageBlock = '';
@@ -97,9 +108,14 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
 ${urls.join('\n')}
-</urlset>`;
+</urlset>
+`;
 
-  res.setHeader('Content-Type', 'application/xml; charset=utf-8');
-  res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
-  return res.status(200).send(xml);
+  writeFileSync(OUT, xml, 'utf8');
+  console.log(`Sitemap: wrote ${OUT} (${urls.length} URLs)`);
 }
+
+main().catch((err) => {
+  console.error('Sitemap generation failed:', err);
+  process.exit(1);
+});

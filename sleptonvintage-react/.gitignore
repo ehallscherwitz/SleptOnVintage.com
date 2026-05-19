@@ -29,3 +29,6 @@ dist-ssr
 
 .vercel
 .env*.local
+
+# Generated at build (scripts/generate-sitemap.mjs)
+public/sitemap.xml
