@@ -2,7 +2,18 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 
 const SITE_URL = 'https://sleptonvintage.com';
-const IMAGES_BUCKET = process.env.VITE_SUPABASE_PRODUCT_IMAGES_BUCKET?.trim() || 'images';
+const IMAGES_BUCKET =
+  process.env.VITE_SUPABASE_PRODUCT_IMAGES_BUCKET?.trim() ||
+  process.env.SUPABASE_PRODUCT_IMAGES_BUCKET?.trim() ||
+  'images';
+
+function supabaseEnv(): { url: string; key: string } | null {
+  const url = process.env.SUPABASE_URL?.trim() || process.env.VITE_SUPABASE_URL?.trim();
+  const key =
+    process.env.SUPABASE_ANON_KEY?.trim() || process.env.VITE_SUPABASE_ANON_KEY?.trim();
+  if (!url || !key) return null;
+  return { url, key };
+}
 
 function xmlEscape(s: string): string {
   return s
@@ -31,8 +42,7 @@ const STATIC_PATHS = [
 ];
 
 export default async function handler(_req: VercelRequest, res: VercelResponse) {
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_ANON_KEY;
+  const env = supabaseEnv();
 
   let productRows: {
     id: number;
@@ -44,8 +54,8 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
     updated_at: string | null;
   }[] = [];
 
-  if (supabaseUrl && supabaseKey) {
-    const supabase = createClient(supabaseUrl, supabaseKey);
+  if (env) {
+    const supabase = createClient(env.url, env.key);
     const { data } = await supabase
       .from('products')
       .select('id, name, size, category, available, image, updated_at')
@@ -68,9 +78,9 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
 
     let imageBlock = '';
     const imgPath = (p.image || '').trim();
-    if (imgPath.startsWith('products/') && supabaseUrl) {
+    if (imgPath.startsWith('products/') && env) {
       const imageLoc = xmlEscape(
-        `${supabaseUrl.replace(/\/$/, '')}/storage/v1/object/public/${IMAGES_BUCKET}/${imgPath}`,
+        `${env.url.replace(/\/$/, '')}/storage/v1/object/public/${IMAGES_BUCKET}/${imgPath}`,
       );
       imageBlock = `<image:image><image:loc>${imageLoc}</image:loc><image:title>${xmlEscape(alt)}</image:title></image:image>`;
     }
