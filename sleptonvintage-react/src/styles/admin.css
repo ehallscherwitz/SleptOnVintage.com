@@ -33,6 +33,22 @@
   color: rgba(255, 255, 255, 0.55);
 }
 
+.admin-sub--flush {
+  flex: 1;
+  min-width: 0;
+}
+
+.admin-page .page-head {
+  max-width: 1100px;
+  padding: 1.25rem 1.25rem 0.5rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.admin-product-edit.admin-inner {
+  padding-top: 0.5rem;
+}
+
 .admin-btn-secondary {
   padding: 0.5rem 0.9rem;
   font-size: 0.85rem;

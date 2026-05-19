@@ -46,8 +46,11 @@ export function getProductStorageObjectPrefix(product: Pick<Product, 'id' | 'sto
   return `products/${seg}`
 }
 
-export function getPublicProductImageUrlFromPath(path: string): string {
-  return supabase.storage.from(PRODUCT_IMAGES_BUCKET).getPublicUrl(path).data.publicUrl
+export function getPublicProductImageUrlFromPath(path: string, cacheKey?: string | null): string {
+  const url = supabase.storage.from(PRODUCT_IMAGES_BUCKET).getPublicUrl(path).data.publicUrl
+  if (!cacheKey) return url
+  const sep = url.includes('?') ? '&' : '?'
+  return `${url}${sep}v=${encodeURIComponent(cacheKey)}`
 }
 
 function looksLikeStoragePath(s: string): boolean {
@@ -55,15 +58,23 @@ function looksLikeStoragePath(s: string): boolean {
 }
 
 /** Primary image for listing pages: if `image` is a Storage path → public URL; else treat it as a URL. */
-export function getPrimaryProductImageUrl(product: Pick<Product, 'image'>): string {
+export function getPrimaryProductImageUrl(product: Pick<Product, 'image' | 'updated_at'>): string {
   const raw = (product.image || '').trim()
   if (!raw) return ''
-  if (looksLikeStoragePath(raw)) return getPublicProductImageUrlFromPath(raw)
+  if (looksLikeStoragePath(raw)) return getPublicProductImageUrlFromPath(raw, product.updated_at ?? null)
   return raw
 }
 
+function withImageCacheBust(url: string, product: Pick<Product, 'updated_at'>): string {
+  if (!product.updated_at || !url) return url
+  const sep = url.includes('?') ? '&' : '?'
+  return `${url}${sep}v=${encodeURIComponent(product.updated_at)}`
+}
+
 /** Public URLs under `images/products/<storage_prefix|id>/`; sorted by filename (lexical). Errors → []. */
-export async function getProductGalleryPublicUrls(product: Pick<Product, 'id' | 'storage_prefix'>): Promise<string[]> {
+export async function getProductGalleryPublicUrls(
+  product: Pick<Product, 'id' | 'storage_prefix' | 'updated_at'>
+): Promise<string[]> {
   const prefix = getProductStorageObjectPrefix(product)
 
   const { data: entries, error } = await supabase.storage.from(PRODUCT_IMAGES_BUCKET).list(prefix, {
@@ -84,43 +95,51 @@ export async function getProductGalleryPublicUrls(product: Pick<Product, 'id' | 
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }))
 
   return files.map((f) =>
-    supabase.storage.from(PRODUCT_IMAGES_BUCKET).getPublicUrl(`${prefix}/${f.name}`).data.publicUrl
+    withImageCacheBust(
+      supabase.storage.from(PRODUCT_IMAGES_BUCKET).getPublicUrl(`${prefix}/${f.name}`).data.publicUrl,
+      product
+    )
   )
 }
 
 /** Gallery from storage first; otherwise single `fallback` URL if present */
 export async function resolveProductImageUrls(
-  product: Pick<Product, 'id' | 'storage_prefix' | 'image'>,
+  product: Pick<Product, 'id' | 'storage_prefix' | 'image' | 'updated_at'>,
   fallback: string | null
 ): Promise<string[]> {
   const fromStorage = await getProductGalleryPublicUrls(product)
   if (fromStorage.length > 0) return fromStorage
-  if (fallback) return [fallback]
+  if (fallback) return [withImageCacheBust(fallback, product)]
   return []
 }
 
 const listingThumbPromises = new Map<string, Promise<string>>()
 
-function listingThumbCacheKey(product: Pick<Product, 'id' | 'storage_prefix' | 'image'>): string {
-  return `${product.id}|${(product.storage_prefix || '').trim()}|${(product.image || '').trim()}`
+function listingThumbCacheKey(product: Pick<Product, 'id' | 'storage_prefix' | 'image' | 'updated_at'>): string {
+  return `${product.id}|${(product.storage_prefix || '').trim()}|${(product.image || '').trim()}|${product.updated_at || ''}`
 }
 
-/**
- * Thumbnail for grids/cart: first Storage object (filename order), else `products.image`.
- */
-export function getListingThumbnailUrl(product: Pick<Product, 'id' | 'storage_prefix' | 'image'>): Promise<string> {
+export function getListingThumbnailUrl(product: Pick<Product, 'id' | 'storage_prefix' | 'image' | 'updated_at'>): Promise<string> {
   const key = listingThumbCacheKey(product)
   const existing = listingThumbPromises.get(key)
   if (existing) return existing
 
   const p = (async () => {
     const gallery = await getProductGalleryPublicUrls(product)
-    if (gallery.length > 0) return gallery[0]
+    if (gallery.length > 0) return withImageCacheBust(gallery[0], product)
     return getPrimaryProductImageUrl(product)
   })()
 
   listingThumbPromises.set(key, p)
   return p
+}
+
+/** Call after admin overwrites a Storage image so category/search grids refetch the thumbnail. */
+export function invalidateListingThumbnailCacheForProduct(productId: number): void {
+  const prefix = `${productId}|`
+  for (const key of [...listingThumbPromises.keys()]) {
+    if (key.startsWith(prefix)) listingThumbPromises.delete(key)
+  }
 }
 
 export const productService = {

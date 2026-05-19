@@ -185,7 +185,8 @@ export const adminService = {
     fileName: string;
     contentType: string;
     dataBase64: string;
-  }): Promise<{ path?: string; publicUrl?: string; error?: string }> {
+    replaceFileName?: string;
+  }): Promise<{ path?: string; publicUrl?: string; product?: unknown; error?: string }> {
     try {
       const response = await fetch(ADMIN_API, {
         method: 'POST',
@@ -194,7 +195,7 @@ export const adminService = {
       });
       const data = await parseJson(response);
       if (!response.ok) return { error: data?.error || `HTTP ${response.status}` };
-      return { path: data.path, publicUrl: data.publicUrl };
+      return { path: data.path, publicUrl: data.publicUrl, product: data.product };
     } catch (e) {
       return { error: networkErrorHint(e) || 'Upload failed' };
     }

@@ -1,15 +1,18 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import Header from '../components/Header';
+import { PageHeadingRow } from '../components/PageHeadingRow';
 import { useAuth } from '../context/AuthContext';
 import { adminService } from '../services/adminService';
 import {
   getPrimaryProductImageUrl,
+  invalidateListingThumbnailCacheForProduct,
   resolveProductImageUrls,
   type Product,
 } from '../services/productService';
 import AdminImageCropModal from '../components/AdminImageCropModal';
 import { isAdminEmail } from '../utils/adminAccess';
+import { storageFileNameForContentType } from '../utils/imageBytes';
 import { rotateImageBase64, type RotateDegrees } from '../utils/rotateImage';
 
 type CropSession = { fileName: string; contentType: string; dataBase64: string };
@@ -214,23 +217,40 @@ const AdminProductEditPage: React.FC = () => {
   };
 
   const uploadImageBytes = async (fileName: string, contentType: string, dataBase64: string, successMsg: string) => {
-    const { error: upErr } = await adminService.uploadProductImageBase64({
+    const { fileName: uploadName, replaceFileName } = storageFileNameForContentType(fileName, contentType);
+    const { error: upErr, product: uploadedProduct } = await adminService.uploadProductImageBase64({
       productId,
-      fileName,
+      fileName: uploadName,
       contentType,
       dataBase64,
+      replaceFileName,
     });
     if (upErr) {
       setErr(upErr);
       return false;
     }
     setMsg(successMsg);
-    bumpImageCache(fileName);
-    void loadImages();
-    if (product) {
-      const previews = await resolveProductImageUrls(product, getPrimaryProductImageUrl(product));
+    bumpImageCache(uploadName);
+    if (replaceFileName) bumpImageCache(replaceFileName);
+    invalidateListingThumbnailCacheForProduct(productId);
+    const row = (uploadedProduct ?? null) as Product | null;
+    if (row?.id) {
+      setProduct(row);
+      setStorageObjectPrefix(`products/${(row.storage_prefix || '').trim() || String(row.id)}`);
+      const previews = await resolveProductImageUrls(row, getPrimaryProductImageUrl(row));
       setPreviewUrls(previews);
+    } else {
+      const { product: refreshed, error: refreshErr } = await adminService.getAdminProduct(productId);
+      if (refreshErr) setErr(refreshErr);
+      else if (refreshed) {
+        const fallback = refreshed as Product;
+        setProduct(fallback);
+        setStorageObjectPrefix(`products/${(fallback.storage_prefix || '').trim() || String(fallback.id)}`);
+        const previews = await resolveProductImageUrls(fallback, getPrimaryProductImageUrl(fallback));
+        setPreviewUrls(previews);
+      }
     }
+    void loadImages();
     return true;
   };
 
@@ -390,6 +410,7 @@ const AdminProductEditPage: React.FC = () => {
     return (
       <div className="admin-page">
         <Header />
+        <PageHeadingRow title="Edit listing" fallbackTo="/admin/products" />
         <p className="admin-inner admin-muted">Loading product…</p>
       </div>
     );
@@ -399,11 +420,9 @@ const AdminProductEditPage: React.FC = () => {
     return (
       <div className="admin-page">
         <Header />
+        <PageHeadingRow title="Edit listing" fallbackTo="/admin/products" />
         <div className="admin-inner">
           <div className="checkout-alert checkout-alert--error">{err}</div>
-          <Link to="/admin/products" className="checkout-link">
-            ← All listings
-          </Link>
         </div>
       </div>
     );
@@ -426,18 +445,13 @@ const AdminProductEditPage: React.FC = () => {
           onApply={applyCrop}
         />
       )}
+      <PageHeadingRow title="Edit listing" fallbackTo="/admin/products" />
       <div className="admin-inner admin-product-edit">
         <div className="admin-page-head">
-          <div>
-            <h1 className="admin-title">Edit listing</h1>
-            <p className="admin-sub">
-              Storage prefix: <code className="admin-code">{storageObjectPrefix}</code> · Bucket <code className="admin-code">images</code>
-            </p>
-          </div>
+          <p className="admin-sub admin-sub--flush">
+            Storage prefix: <code className="admin-code">{storageObjectPrefix}</code> · Bucket <code className="admin-code">images</code>
+          </p>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            <Link to="/admin/products" className="admin-btn-secondary" style={{ textDecoration: 'none' }}>
-              All listings
-            </Link>
             <Link to={`/product/${product.id}`} className="admin-btn-secondary" style={{ textDecoration: 'none' }}>
               View on site
             </Link>
