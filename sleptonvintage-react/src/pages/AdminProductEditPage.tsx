@@ -7,8 +7,9 @@ import { adminService } from '../services/adminService';
 import {
   getPrimaryProductImageUrl,
   invalidateListingThumbnailCacheForProduct,
-  resolveProductImageUrls,
+  listProductGalleryFiles,
   type Product,
+  type ProductGalleryFile,
 } from '../services/productService';
 import AdminImageCropModal from '../components/AdminImageCropModal';
 import { isAdminEmail } from '../utils/adminAccess';
@@ -17,7 +18,7 @@ import { rotateImageBase64, type RotateDegrees } from '../utils/rotateImage';
 
 type CropSession = { fileName: string; contentType: string; dataBase64: string };
 
-type GalleryFile = { name: string; path: string; publicUrl: string };
+type GalleryFile = ProductGalleryFile;
 
 const CATEGORIES: Product['category'][] = ['shirts', 'sweaters', 'hoodies', 'jackets', 'pants', 'shorts'];
 
@@ -46,7 +47,7 @@ const AdminProductEditPage: React.FC = () => {
   const [category, setCategory] = useState<Product['category']>('shirts');
   const [available, setAvailable] = useState(true);
   const [files, setFiles] = useState<GalleryFile[]>([]);
-  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+  const [legacyPreviewUrls, setLegacyPreviewUrls] = useState<string[]>([]);
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [orderDirty, setOrderDirty] = useState(false);
   const [imageCacheBust, setImageCacheBust] = useState<Record<string, number>>({});
@@ -64,14 +65,36 @@ const AdminProductEditPage: React.FC = () => {
     }
   }, [msg, err]);
 
-  const loadImages = useCallback(async () => {
+  const loadImages = useCallback(async (row: Product) => {
     if (!Number.isFinite(productId)) return;
-    const { files: list, error: e } = await adminService.listProductImages(productId);
-    if (e) setErr(e);
-    else {
-      setFiles(list);
+
+    const { files: fromAdmin, error: adminErr } = await adminService.listProductImages(productId);
+    if (!adminErr && fromAdmin.length > 0) {
+      setFiles(fromAdmin);
+      setLegacyPreviewUrls([]);
       setOrderDirty(false);
+      return;
     }
+
+    const fromStorage = await listProductGalleryFiles(row);
+    if (fromStorage.length > 0) {
+      setFiles(fromStorage);
+      setLegacyPreviewUrls([]);
+      setOrderDirty(false);
+      if (adminErr) {
+        setErr(
+          `${adminErr} — showing photos from Storage directly. Crop/rotate still work; redeploy the site if edits fail to save.`
+        );
+      }
+      return;
+    }
+
+    if (adminErr) setErr(adminErr);
+    setFiles([]);
+    const primary = getPrimaryProductImageUrl(row);
+    const legacyOnly =
+      primary && !(row.image || '').trim().startsWith('products/') && !(row.image || '').trim().startsWith('items/');
+    setLegacyPreviewUrls(legacyOnly ? [primary] : []);
   }, [productId]);
 
   const loadProduct = useCallback(async () => {
@@ -97,9 +120,7 @@ const AdminProductEditPage: React.FC = () => {
     setPriceDollars((row.price / 100).toFixed(2));
     setCategory(row.category);
     setAvailable(row.available);
-    const previews = await resolveProductImageUrls(row, getPrimaryProductImageUrl(row));
-    setPreviewUrls(previews);
-    await loadImages();
+    await loadImages(row);
     setLoading(false);
   }, [productId, loadImages]);
 
@@ -135,9 +156,7 @@ const AdminProductEditPage: React.FC = () => {
         const u = updated as Product;
         setProduct(u);
         setStorageObjectPrefix(`products/${(u.storage_prefix || '').trim() || String(u.id)}`);
-        const previews = await resolveProductImageUrls(u, getPrimaryProductImageUrl(u));
-        setPreviewUrls(previews);
-        void loadImages();
+        void loadImages(u);
       }
     } catch (ex) {
       setErr(ex instanceof Error ? ex.message : 'Save failed');
@@ -159,7 +178,7 @@ const AdminProductEditPage: React.FC = () => {
       if (e) setErr(e);
       else {
         setMsg('Photo order saved (files renamed 01, 02, …).');
-        void loadImages();
+        if (product) void loadImages(product);
       }
     } catch (ex) {
       setErr(ex instanceof Error ? ex.message : 'Reorder failed');
@@ -193,7 +212,7 @@ const AdminProductEditPage: React.FC = () => {
           if (upErr) setErr(upErr);
           else {
             setMsg(`Uploaded ${fileName}`);
-            void loadImages();
+            if (product) void loadImages(product);
           }
         } catch (ex) {
           setErr(ex instanceof Error ? ex.message : 'Upload failed');
@@ -237,8 +256,7 @@ const AdminProductEditPage: React.FC = () => {
     if (row?.id) {
       setProduct(row);
       setStorageObjectPrefix(`products/${(row.storage_prefix || '').trim() || String(row.id)}`);
-      const previews = await resolveProductImageUrls(row, getPrimaryProductImageUrl(row));
-      setPreviewUrls(previews);
+      await loadImages(row);
     } else {
       const { product: refreshed, error: refreshErr } = await adminService.getAdminProduct(productId);
       if (refreshErr) setErr(refreshErr);
@@ -246,11 +264,9 @@ const AdminProductEditPage: React.FC = () => {
         const fallback = refreshed as Product;
         setProduct(fallback);
         setStorageObjectPrefix(`products/${(fallback.storage_prefix || '').trim() || String(fallback.id)}`);
-        const previews = await resolveProductImageUrls(fallback, getPrimaryProductImageUrl(fallback));
-        setPreviewUrls(previews);
+        await loadImages(fallback);
       }
     }
-    void loadImages();
     return true;
   };
 
@@ -328,7 +344,7 @@ const AdminProductEditPage: React.FC = () => {
       if (e) setErr(e);
       else {
         setMsg(`Deleted ${fileName}`);
-        void loadImages();
+        if (product) void loadImages(product);
       }
     } catch (ex) {
       setErr(ex instanceof Error ? ex.message : 'Delete failed');
@@ -594,17 +610,17 @@ const AdminProductEditPage: React.FC = () => {
                 </div>
               ))}
             </div>
-          ) : previewUrls.length > 0 ? (
+          ) : legacyPreviewUrls.length > 0 ? (
             <>
               <p className="admin-hint">
-                No image files in the Storage folder for this listing yet. The site is still showing these (from Storage or the primary image field). Upload
-                images above to manage them here.
+                This listing uses a legacy image URL (not files in Storage). Upload new photos above to move it into{' '}
+                <code className="admin-code">images/products/{product.id}/</code> and enable crop, rotate, and reorder here.
               </p>
               <div className="admin-product-gallery">
-                {previewUrls.map((url, i) => (
+                {legacyPreviewUrls.map((url, i) => (
                   <div key={`${i}-${url}`} className="admin-product-tile admin-product-tile--static">
                     <img src={url} alt="" loading="lazy" />
-                    <div className="admin-product-tile-meta">Preview {i + 1}</div>
+                    <div className="admin-product-tile-meta">Legacy image</div>
                   </div>
                 ))}
               </div>

@@ -71,17 +71,17 @@ function withImageCacheBust(url: string, product: Pick<Product, 'updated_at'>): 
   return `${url}${sep}v=${encodeURIComponent(product.updated_at)}`
 }
 
-/** Public URLs under `images/products/<storage_prefix|id>/`; sorted by filename (lexical). Errors → []. */
-export async function getProductGalleryPublicUrls(
+export type ProductGalleryFile = { name: string; path: string; publicUrl: string };
+
+/** List gallery file names + public URLs from Storage (client). Same folder as storefront. */
+export async function listProductGalleryFiles(
   product: Pick<Product, 'id' | 'storage_prefix' | 'updated_at'>
-): Promise<string[]> {
+): Promise<ProductGalleryFile[]> {
   const prefix = getProductStorageObjectPrefix(product)
 
   const { data: entries, error } = await supabase.storage.from(PRODUCT_IMAGES_BUCKET).list(prefix, {
     limit: 100,
     offset: 0,
-    // Dashboard bulk uploads often share the same second; filename order is the reliable way to
-    // preserve "sequence" — use names like 01.webp, 02.webp before dragging many files at once.
     sortBy: { column: 'name', order: 'asc' },
   })
 
@@ -90,16 +90,27 @@ export async function getProductGalleryPublicUrls(
     return []
   }
 
-  const files = (entries || [])
+  const names = (entries || [])
     .filter((e) => Boolean(e?.name) && !IGNORED_STORAGE_NAMES.has(e.name))
-    .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }))
+    .map((e) => e.name)
+    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }))
 
-  return files.map((f) =>
-    withImageCacheBust(
-      supabase.storage.from(PRODUCT_IMAGES_BUCKET).getPublicUrl(`${prefix}/${f.name}`).data.publicUrl,
-      product
-    )
-  )
+  return names.map((name) => {
+    const path = `${prefix}/${name}`
+    return {
+      name,
+      path,
+      publicUrl: withImageCacheBust(getPublicProductImageUrlFromPath(path), product),
+    }
+  })
+}
+
+/** Public URLs under `images/products/<storage_prefix|id>/`; sorted by filename (lexical). Errors → []. */
+export async function getProductGalleryPublicUrls(
+  product: Pick<Product, 'id' | 'storage_prefix' | 'updated_at'>
+): Promise<string[]> {
+  const files = await listProductGalleryFiles(product)
+  return files.map((f) => f.publicUrl)
 }
 
 /** Gallery from storage first; otherwise single `fallback` URL if present */

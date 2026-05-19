@@ -14,6 +14,15 @@ type AdminOk = Extract<AdminAuthResult, { ok: true }>;
 
 type ProductStorageRow = { id: number; storage_prefix: string | null; image: string | null };
 
+/** `storage_prefix` is optional on `products` (see supabase-add-products-storage-prefix.sql). */
+function toProductStorageRow(data: { id: number; image?: string | null; storage_prefix?: string | null }): ProductStorageRow {
+  return {
+    id: data.id,
+    storage_prefix: data.storage_prefix ?? null,
+    image: (data.image as string | null) ?? null,
+  };
+}
+
 function parseBody(req: VercelRequest): Record<string, unknown> {
   try {
     if (typeof req.body === 'string') return JSON.parse(req.body || '{}') as Record<string, unknown>;
@@ -64,19 +73,12 @@ async function getProductStorageRow(
 ): Promise<{ row: ProductStorageRow } | { error: string; status: number }> {
   const { data, error } = await service
     .from('products')
-    .select('id, storage_prefix, image')
+    .select('id, image')
     .eq('id', productId)
     .maybeSingle();
   if (error) return { error: error.message, status: 500 };
   if (!data) return { error: 'Product not found', status: 404 };
-  const r = data as { id: number; storage_prefix?: string | null; image?: string | null };
-  return {
-    row: {
-      id: r.id,
-      storage_prefix: r.storage_prefix ?? null,
-      image: (r.image as string | null) ?? null,
-    },
-  };
+  return { row: toProductStorageRow(data as { id: number; image?: string | null }) };
 }
 
 /** After rotate/crop/upload: always bump `updated_at`; sync `products.image` when this file is the thumbnail. */
@@ -105,19 +107,14 @@ async function syncProductAfterImageWrite(
     .from('products')
     .update(patch)
     .eq('id', row.id)
-    .select('id, storage_prefix, image')
+    .select('id, image')
     .maybeSingle();
   if (error) {
     console.warn('sync product after image write:', error.message);
     return row;
   }
   if (!data) return row;
-  const r = data as { id: number; storage_prefix?: string | null; image?: string | null };
-  return {
-    id: r.id,
-    storage_prefix: r.storage_prefix ?? null,
-    image: (r.image as string | null) ?? null,
-  };
+  return toProductStorageRow(data as { id: number; image?: string | null });
 }
 
 async function handleListOrders(_req: VercelRequest, res: VercelResponse, auth: AdminOk) {
@@ -547,7 +544,7 @@ async function handleSetPrimaryImages(req: VercelRequest, res: VercelResponse, a
 
   const { data: products, error: prodErr } = await auth.service
     .from('products')
-    .select('id, image, storage_prefix')
+    .select('id, image')
     .order('id', { ascending: true })
     .limit(limit);
   if (prodErr) return res.status(500).json({ error: prodErr.message || 'Failed to load products' });
