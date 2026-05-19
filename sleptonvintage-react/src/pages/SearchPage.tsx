@@ -7,6 +7,9 @@ import { useCart } from '../context/CartContext';
 import { ProductThumbnail } from '../components/ProductThumbnail';
 import { productService, type Product } from '../services/productService';
 import { formatUsdFromCents } from '../utils/money';
+import { Seo } from '../components/Seo';
+import { SITE_SEO_KEYWORDS, SITE_TAGLINE } from '../constants/site';
+import { SITE_NAME } from '../constants/legal';
 
 function compareAvailableFirst(a: Product, b: Product): number {
   // available=true first; sold (available=false) last
@@ -128,9 +131,15 @@ const SearchPage: React.FC = () => {
 
   return (
     <div>
+      <Seo
+        title={`Shop All Vintage & Thrift — ${SITE_NAME}`}
+        description={`Search every listing: vintage shirts, band tees, hoodies, jackets and more. ${SITE_TAGLINE}`}
+        keywords={SITE_SEO_KEYWORDS}
+        canonicalPath="/search"
+      />
       <Header />
       <PageHeadingRow title="Search Products" />
-      
+
       <div className="search-container">
         <div className="search-filters">
           <div className="search-input-container">

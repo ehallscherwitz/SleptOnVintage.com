@@ -8,6 +8,16 @@ import { getPrimaryProductImageUrl, productService, resolveProductImageUrls, typ
 import { useCart } from '../context/CartContext';
 import { formatUsdFromCents } from '../utils/money';
 import { isAdminEmail } from '../utils/adminAccess';
+import { Seo, JsonLd } from '../components/Seo';
+import {
+  buildProductCanonicalPath,
+  buildProductImageAlt,
+  buildProductJsonLd,
+  buildProductMetaDescription,
+  buildProductOgImage,
+  buildProductPageTitle,
+  buildProductKeywords,
+} from '../utils/productSeo';
 
 const ProductDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -106,12 +116,27 @@ const ProductDetailPage: React.FC = () => {
     );
   }
 
+  const mainAlt = buildProductImageAlt(product, {
+    photoIndex: activeImageIndex,
+    totalPhotos: imageUrls.length,
+    context: 'gallery',
+  });
+
   return (
     <div>
+      <Seo
+        title={buildProductPageTitle(product)}
+        description={buildProductMetaDescription(product)}
+        keywords={buildProductKeywords(product)}
+        canonicalPath={buildProductCanonicalPath(product)}
+        ogType="product"
+        ogImage={buildProductOgImage(imageUrls)}
+      />
+      <JsonLd data={buildProductJsonLd(product, imageUrls)} />
       <Header />
       <PageHeadingRow title="Listing" />
-      
-      <div className="product-detail-container">
+
+      <main className="product-detail-container">
         <div className="breadcrumb">
           <Link to="/">Home</Link>
           <span> / </span>
@@ -131,7 +156,9 @@ const ProductDetailPage: React.FC = () => {
                     <img
                       className="product-detail-image"
                       src={imageUrls[activeImageIndex]}
-                      alt={`${product.name} — photo ${activeImageIndex + 1}`}
+                      alt={mainAlt}
+                      loading="eager"
+                      decoding="async"
                     />
                     {imageUrls.length > 1 && (
                       <>
@@ -180,7 +207,16 @@ const ProductDetailPage: React.FC = () => {
                       className={`product-gallery-thumb ${idx === activeImageIndex ? 'active' : ''}`}
                       onClick={() => setActiveImageIndex(idx)}
                     >
-                      <img src={url} alt="" />
+                      <img
+                        src={url}
+                        alt={buildProductImageAlt(product, {
+                          photoIndex: idx,
+                          totalPhotos: imageUrls.length,
+                          context: 'thumb',
+                        })}
+                        loading="lazy"
+                        decoding="async"
+                      />
                     </button>
                   ))}
                 </div>
@@ -237,7 +273,7 @@ const ProductDetailPage: React.FC = () => {
             </div>
           </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 };

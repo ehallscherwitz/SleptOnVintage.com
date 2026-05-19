@@ -621,7 +621,7 @@ export const CheckoutPage: React.FC = () => {
               <h2>Order summary</h2>
               {cartItems.map((item) => (
                 <div key={item.id} className="checkout-line-item">
-                  <ProductThumbnail product={item.product} className="checkout-line-thumb" alt="" />
+                  <ProductThumbnail product={item.product} className="checkout-line-thumb" />
                   <div className="checkout-line-meta">
                     <p className="checkout-line-name">{item.product.name}</p>
                     <p className="checkout-line-detail">

@@ -7,6 +7,8 @@ import { useCart } from '../context/CartContext';
 import { ProductThumbnail } from '../components/ProductThumbnail';
 import { productService, type Product } from '../services/productService';
 import { formatUsdFromCents } from '../utils/money';
+import { Seo } from '../components/Seo';
+import { buildCategoryMetaDescription, buildCategoryPageTitle } from '../utils/productSeo';
 
 interface CategoryPageProps {
   category: Product['category'];
@@ -76,6 +78,11 @@ const CategoryPage: React.FC<CategoryPageProps> = ({ category, title }) => {
 
   return (
     <div>
+      <Seo
+        title={buildCategoryPageTitle(category)}
+        description={buildCategoryMetaDescription(category)}
+        canonicalPath={`/${category}`}
+      />
       <Header />
       <PageHeadingRow title={title} />
       <div className="category-grid">

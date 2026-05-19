@@ -5,6 +5,9 @@ import Header from '../components/Header';
 import { ProductThumbnail } from '../components/ProductThumbnail';
 import { supabase } from '../lib/supabase';
 import { productService, type Product } from '../services/productService';
+import { Seo } from '../components/Seo';
+import { SITE_SEO_KEYWORDS, SITE_TAGLINE, SITE_URL } from '../constants/site';
+import { SITE_NAME } from '../constants/legal';
 
 const HOMEPAGE_VIDEO_BUCKET =
   (import.meta.env.VITE_HOMEPAGE_VIDEO_BUCKET as string | undefined)?.trim() || 'videos';
@@ -98,6 +101,14 @@ const Homepage: React.FC = () => {
 
   return (
     <div className="homepage">
+      <Seo
+        title={`${SITE_NAME} — Vintage & Thrift Clothing Online`}
+        description={`${SITE_TAGLINE} Shop one-of-one pre-owned 90s, band tees, single stitch shirts, hoodies & jackets. Free US shipping.`}
+        keywords={SITE_SEO_KEYWORDS}
+        canonicalPath="/"
+        ogImage={`${SITE_URL}/photos/SOV_PFP.jpg`}
+      />
+      <h1 className="visually-hidden">{SITE_NAME} — vintage thrift clothing online</h1>
       <Header />
       <div className="homepage-hero-video-wrap">
         <video
@@ -128,7 +139,7 @@ const Homepage: React.FC = () => {
               <button type="button" className="category">
                 <div className="thumbnail-row">
                   {sample ? (
-                    <ProductThumbnail product={sample} className="thumbnail" alt={name} />
+                    <ProductThumbnail product={sample} className="thumbnail" />
                   ) : (
                     <div className="category-thumbnail-placeholder thumbnail" aria-hidden />
                   )}
