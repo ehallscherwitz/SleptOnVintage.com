@@ -11,6 +11,8 @@ export const POLICY_EFFECTIVE_DATE = 'May 19, 2026';
 export const GOVERNING_LAW_STATE = 'Texas';
 /** Days after delivery to request a refund under the exceptions in our refund policy. */
 export const RETURN_CLAIM_DAYS = 7;
+/** Rolling window for complimentary ($0) checkout per account. */
+export const FREE_CHECKOUT_INTERVAL_DAYS = 14;
 
 export function governingLawPhrase(): string {
   const state = GOVERNING_LAW_STATE.trim();

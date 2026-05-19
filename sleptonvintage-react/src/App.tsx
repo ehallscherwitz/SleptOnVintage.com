@@ -19,6 +19,7 @@ import AdminProductEditPage from './pages/AdminProductEditPage';
 import AdminNewListingPage from './pages/AdminNewListingPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import TermsPage from './pages/TermsPage';
+import ContactPage from './pages/ContactPage';
 import Footer from './components/Footer';
 import { ScrollToTop } from './components/ScrollToTop';
 
@@ -65,6 +66,7 @@ function App() {
                 <Route path="/auth/callback" element={<AuthCallback />} />
                 <Route path="/privacy" element={<PrivacyPolicyPage />} />
                 <Route path="/terms" element={<TermsPage />} />
+                <Route path="/contact" element={<ContactPage />} />
               </Routes>
             </div>
             <Footer />

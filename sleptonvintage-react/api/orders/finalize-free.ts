@@ -166,29 +166,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
+    const FREE_CHECKOUT_LIMIT_DAYS = 14; // keep in sync with FREE_CHECKOUT_INTERVAL_DAYS in src/constants/legal.ts
+
     const skipFreeLimit =
-      String(process.env.FREE_ORDER_ONE_PER_DAY_DISABLED || '').trim().toLowerCase() === 'true';
+      String(process.env.FREE_ORDER_ONE_PER_DAY_DISABLED || '').trim().toLowerCase() === 'true' ||
+      String(process.env.FREE_ORDER_LIMIT_DISABLED || '').trim().toLowerCase() === 'true';
 
     if (!skipFreeLimit) {
-      const tz =
-        process.env.FREE_ORDER_LIMIT_TIMEZONE?.trim().replace(/^['"]|['"]$/g, '') ||
-        'America/New_York';
-      const { data: todayCountRaw, error: todayErr } = await supabase.rpc('count_free_checkouts_on_local_calendar_date', {
-        p_tz: tz,
+      const { data: recentCountRaw, error: limitErr } = await supabase.rpc('count_free_checkouts_in_last_days', {
+        p_days: FREE_CHECKOUT_LIMIT_DAYS,
       });
-      if (todayErr) {
-        console.error('finalize-free daily limit RPC:', todayErr);
+      if (limitErr) {
+        console.error('finalize-free limit RPC:', limitErr);
         return res.status(503).json({
           error:
             'Free-checkout limit check is unavailable. Add the RPC from supabase-free-item-limit.sql or contact support.',
         });
       }
-      const todayCount =
-        typeof todayCountRaw === 'number' ? todayCountRaw : Number.parseInt(String(todayCountRaw ?? '0'), 10) || 0;
-      if (todayCount >= 1) {
+      const recentCount =
+        typeof recentCountRaw === 'number' ? recentCountRaw : Number.parseInt(String(recentCountRaw ?? '0'), 10) || 0;
+      if (recentCount >= 1) {
         return res.status(409).json({
           error:
-            'You’ve already claimed a complimentary item today (one per account per calendar day). Please try again tomorrow.',
+            'You’ve already claimed a complimentary item in the last 2 weeks (one per account every 2 weeks). Please try again later.',
         });
       }
     }

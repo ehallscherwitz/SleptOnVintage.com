@@ -25,6 +25,8 @@ export const LegalDocument: React.FC<LegalDocumentProps> = ({ title, children })
           <Link to="/privacy">Privacy</Link>
           {' · '}
           <Link to="/terms">Terms</Link>
+          {' · '}
+          <Link to="/contact">Contact</Link>
         </p>
       </div>
     </div>

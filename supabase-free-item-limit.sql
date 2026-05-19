@@ -1,9 +1,11 @@
--- Limit: same account can claim at most one $0 checkout per calendar day in a chosen IANA TZ.
+-- Limit: same account can claim at most one $0 checkout per rolling window (default 14 days).
 -- Run in Supabase SQL Editor after deploying API that calls this RPC.
 begin;
 
-create or replace function public.count_free_checkouts_on_local_calendar_date(
-  p_tz text default 'America/New_York'
+drop function if exists public.count_free_checkouts_on_local_calendar_date(text);
+
+create or replace function public.count_free_checkouts_in_last_days(
+  p_days integer default 14
 )
 returns integer
 language sql
@@ -15,11 +17,11 @@ as $$
   from public.orders o
   where o.user_id = auth.uid()
     and o.total = 0
-    and square_payment_id is null
-    and (o.created_at at time zone p_tz)::date = (now() at time zone p_tz)::date;
+    and o.square_payment_id is null
+    and o.created_at >= now() - make_interval(days => greatest(p_days, 1));
 $$;
 
-revoke all on function public.count_free_checkouts_on_local_calendar_date(text) from public;
-grant execute on function public.count_free_checkouts_on_local_calendar_date(text) to authenticated;
+revoke all on function public.count_free_checkouts_in_last_days(integer) from public;
+grant execute on function public.count_free_checkouts_in_last_days(integer) to authenticated;
 
 commit;

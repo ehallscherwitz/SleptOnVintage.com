@@ -8,7 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { checkoutService, getPromoResult, type CheckoutCartItem, type CustomerInfo, type ShippingInfo } from '../services/checkoutService';
 import { formatUsdFromCents } from '../utils/money';
 import { ProductThumbnail } from '../components/ProductThumbnail';
-import { RETURN_CLAIM_DAYS } from '../constants/legal';
+import { FREE_CHECKOUT_INTERVAL_DAYS, RETURN_CLAIM_DAYS } from '../constants/legal';
 
 declare global {
   interface Window {
@@ -548,7 +548,8 @@ export const CheckoutPage: React.FC = () => {
                 <p className="checkout-hint">
                   This order total is $0.00 — no card required. Click below to confirm shipping details and place your order.
                   {' '}
-                  Limit one complimentary checkout per account per calendar day (only one $0 listing in the cart at a time).
+                  Limit one complimentary checkout per account every {FREE_CHECKOUT_INTERVAL_DAYS} days (only one $0
+                  listing in the cart at a time).
                 </p>
               ) : (
                 <>

@@ -6,6 +6,7 @@ import {
   INSTAGRAM_URL,
   LEGAL_OPERATOR_NAME,
   POLICY_EFFECTIVE_DATE,
+  FREE_CHECKOUT_INTERVAL_DAYS,
   RETURN_CLAIM_DAYS,
   SITE_DOMAIN,
   SITE_NAME,
@@ -59,7 +60,7 @@ const TermsPage: React.FC = () => {
         in your jurisdiction (including copyright laws) in connection with the Service.
       </p>
       <p>
-        You must not transmit worms, viruses, or any code of a destructive nature. A breach or violation of any of the
+        You must not use the site to spread malware or otherwise harm the Service. A breach or violation of any of the
         Terms may result in immediate termination of your access to the Service.
       </p>
 
@@ -185,7 +186,8 @@ const TermsPage: React.FC = () => {
       <h3>Promotional and $0 orders</h3>
       <p>
         Promotional codes and complimentary ($0) checkouts may be subject to limits shown at checkout (for example, one
-        complimentary checkout per account per calendar day). We may modify or cancel promotions at any time.
+        complimentary checkout per account every {FREE_CHECKOUT_INTERVAL_DAYS} days). We may modify or cancel promotions
+        at any time.
       </p>
 
       <h2>Section 7 — Third-party services and tools</h2>
