@@ -131,6 +131,8 @@ const ProductDetailPage: React.FC = () => {
         canonicalPath={buildProductCanonicalPath(product)}
         ogType="product"
         ogImage={buildProductOgImage(imageUrls)}
+        productPriceCents={product.price}
+        productAvailable={product.available}
       />
       <JsonLd data={buildProductJsonLd(product, imageUrls)} />
       <Header />

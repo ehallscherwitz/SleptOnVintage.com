@@ -52,7 +52,22 @@ Build runs `scripts/generate-sitemap.mjs` (needs `VITE_SUPABASE_URL` + `VITE_SUP
 
 ```powershell
 npm run sitemap
+npm run pinterest-catalog
 ```
+
+## Pinterest catalog + Rich Pins
+
+After deploy, the product feed is at:
+
+```text
+https://sleptonvintage.com/pinterest-catalog.csv
+```
+
+**Catalog (auto sync, Shopify-like):** Pinterest Business → Catalogs → Add data source → **Provide a URL link** → paste the feed URL above → daily ingest.
+
+**Rich Pins:** After deploy, validate a product URL at [Pinterest URL debugger](https://developers.pinterest.com/tools/url-debugger/) and enable Product Rich Pins when offered.
+
+Redeploy (`vercel --prod`) after inventory changes so the CSV and sitemap update; Pinterest re-fetches on its schedule (~daily).
 
 ## Supabase SQL scripts (run in Supabase Dashboard → SQL Editor)
 

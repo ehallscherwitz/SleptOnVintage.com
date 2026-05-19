@@ -9,6 +9,9 @@ type SeoProps = {
   canonicalPath?: string;
   ogType?: 'website' | 'product' | 'article';
   ogImage?: string;
+  /** Pinterest / Facebook product Rich Pins */
+  productPriceCents?: number;
+  productAvailable?: boolean;
   noindex?: boolean;
   children?: React.ReactNode;
 };
@@ -42,6 +45,8 @@ export const Seo: React.FC<SeoProps> = ({
   canonicalPath,
   ogType = 'website',
   ogImage,
+  productPriceCents,
+  productAvailable,
   noindex = false,
   children,
 }) => {
@@ -63,11 +68,29 @@ export const Seo: React.FC<SeoProps> = ({
     upsertMeta('og:site_name', SITE_NAME, 'property');
     if (ogImage) upsertMeta('og:image', ogImage, 'property');
 
+    if (ogType === 'product' && productPriceCents != null) {
+      upsertMeta('product:price:amount', (productPriceCents / 100).toFixed(2), 'property');
+      upsertMeta('product:price:currency', 'USD', 'property');
+    }
+    if (ogType === 'product' && productAvailable != null) {
+      upsertMeta('product:availability', productAvailable ? 'instock' : 'oos', 'property');
+    }
+
     upsertMeta('twitter:card', ogImage ? 'summary_large_image' : 'summary');
     upsertMeta('twitter:title', title);
     if (description) upsertMeta('twitter:description', description);
     if (ogImage) upsertMeta('twitter:image', ogImage);
-  }, [title, description, keywords, canonicalPath, ogType, ogImage, noindex]);
+  }, [
+    title,
+    description,
+    keywords,
+    canonicalPath,
+    ogType,
+    ogImage,
+    productPriceCents,
+    productAvailable,
+    noindex,
+  ]);
 
   return <>{children}</>;
 };
