@@ -24,7 +24,10 @@ function xmlEscape(s: string | null | undefined): string {
 }
 
 function productImageAlt(name: string, size: string, category: string): string {
-  return `Vintage ${name} — pre-owned thrift ${category} size ${size}`;
+  const trimmed = (name ?? '').trim();
+  const hasVintage = /\bvintage\b/i.test(trimmed);
+  const title = hasVintage ? trimmed : `Vintage ${trimmed}`;
+  return `${title} — pre-owned thrift ${category} size ${size}`;
 }
 
 const STATIC_PATHS = [
@@ -82,7 +85,7 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
 
     let imageBlock = '';
     const imgPath = (p.image || '').trim();
-    if (imgPath.startsWith('products/') && env) {
+    if ((imgPath.startsWith('products/') || imgPath.startsWith('items/')) && env) {
       const imageLoc = xmlEscape(
         `${env.url.replace(/\/$/, '')}/storage/v1/object/public/${IMAGES_BUCKET}/${imgPath}`,
       );

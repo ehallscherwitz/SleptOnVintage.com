@@ -44,7 +44,10 @@ function xmlEscape(s) {
 }
 
 function productImageAlt(name, size, category) {
-  return `Vintage ${name} — pre-owned thrift ${category} size ${size}`;
+  const trimmed = String(name ?? '').trim();
+  const hasVintage = /\bvintage\b/i.test(trimmed);
+  const title = hasVintage ? trimmed : `Vintage ${trimmed}`;
+  return `${title} — pre-owned thrift ${category} size ${size}`;
 }
 
 function supabaseEnv() {
@@ -93,7 +96,7 @@ async function main() {
 
     let imageBlock = '';
     const imgPath = (p.image || '').trim();
-    if (imgPath.startsWith('products/') && env) {
+    if ((imgPath.startsWith('products/') || imgPath.startsWith('items/')) && env) {
       const imageLoc = xmlEscape(
         `${env.url.replace(/\/$/, '')}/storage/v1/object/public/${IMAGES_BUCKET}/${imgPath}`,
       );
