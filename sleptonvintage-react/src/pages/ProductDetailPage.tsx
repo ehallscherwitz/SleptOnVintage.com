@@ -14,10 +14,12 @@ import {
   buildProductImageAlt,
   buildProductJsonLd,
   buildProductMetaDescription,
-  buildProductOgDescription,
+  buildProductImageAltShort,
+  buildProductCanonicalUrl,
   buildProductOgImage,
   buildProductOgTitle,
   buildProductPageTitle,
+  buildProductPinDescription,
   buildProductKeywords,
 } from '../utils/productSeo';
 
@@ -118,11 +120,7 @@ const ProductDetailPage: React.FC = () => {
     );
   }
 
-  const mainAlt = buildProductImageAlt(product, {
-    photoIndex: activeImageIndex,
-    totalPhotos: imageUrls.length,
-    context: 'gallery',
-  });
+  const mainAlt = buildProductImageAltShort(product);
 
   return (
     <div>
@@ -130,7 +128,7 @@ const ProductDetailPage: React.FC = () => {
         title={buildProductPageTitle(product)}
         description={buildProductMetaDescription(product)}
         ogTitle={buildProductOgTitle(product)}
-        ogDescription={buildProductOgDescription(product)}
+        ogDescription=""
         keywords={buildProductKeywords(product)}
         canonicalPath={buildProductCanonicalPath(product)}
         ogType="product"
@@ -163,6 +161,9 @@ const ProductDetailPage: React.FC = () => {
                       className="product-detail-image"
                       src={imageUrls[activeImageIndex]}
                       alt={mainAlt}
+                      title={buildProductOgTitle(product)}
+                      data-pin-description={buildProductPinDescription(product)}
+                      data-pin-url={buildProductCanonicalUrl(product)}
                       loading="eager"
                       decoding="async"
                     />

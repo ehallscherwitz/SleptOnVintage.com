@@ -118,18 +118,24 @@ export function buildProductOgTitle(product: ProductSeoFields): string {
   return truncate(normalizeWhitespace(product.name), 120);
 }
 
-/** Short og:description when saving a Pin (not the long Google meta blurb). */
-export function buildProductOgDescription(product: ProductSeoFields): string {
-  return truncate(`Size ${product.size} · ${SITE_NAME}`, 120);
+/** Pinterest Save reads data-pin-description before meta tags — use listing name. */
+export function buildProductPinDescription(product: ProductSeoFields): string {
+  return truncate(`${normalizeWhitespace(product.name)} · Size ${product.size}`, 500);
+}
+
+/**
+ * Main image alt on product detail — kept short so Pinterest Save does not paste a paragraph.
+ * Grid/cart thumbnails use buildProductImageAlt() for Google Image SEO.
+ */
+export function buildProductImageAltShort(product: ProductSeoFields): string {
+  return truncate(`${normalizeWhitespace(product.name)} — size ${product.size}`, 200);
 }
 
 export function buildProductMetaDescription(product: ProductSeoFields): string {
-  const cat = categoryPlural(product.category);
-  const desc = normalizeWhitespace(
-    `Shop "${product.name}" — authentic vintage & thrift ${cat.slice(0, -1) || 'piece'} in size ${product.size}. ` +
-      `Pre-owned one-of-one streetwear with free US shipping. ${SITE_TAGLINE}.`,
+  return truncate(
+    `${normalizeWhitespace(product.name)}. Size ${product.size}. One-of-one vintage & thrift · Free US shipping. ${SITE_NAME}.`,
+    160,
   );
-  return truncate(desc, 160);
 }
 
 export function buildProductKeywords(product: ProductSeoFields): string {
