@@ -24,6 +24,11 @@ type SeoProps = {
 };
 
 function upsertMeta(name: string, content: string, attr: 'name' | 'property' = 'name') {
+  if (content === '') {
+    const existing = document.querySelector(`meta[${attr}="${name}"]`);
+    existing?.remove();
+    return;
+  }
   if (!content) return;
   let el = document.querySelector(`meta[${attr}="${name}"]`) as HTMLMetaElement | null;
   if (!el) {
@@ -74,7 +79,7 @@ export const Seo: React.FC<SeoProps> = ({
     upsertMeta('robots', noindex ? 'noindex, nofollow' : 'index, follow');
 
     upsertMeta('og:title', socialTitle, 'property');
-    if (socialDescription) upsertMeta('og:description', socialDescription, 'property');
+    upsertMeta('og:description', socialDescription, 'property');
     upsertMeta('og:type', ogType, 'property');
     upsertMeta('og:url', canonical, 'property');
     upsertMeta('og:site_name', SITE_NAME, 'property');

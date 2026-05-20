@@ -128,7 +128,7 @@ const ProductDetailPage: React.FC = () => {
         title={buildProductPageTitle(product)}
         description={buildProductMetaDescription(product)}
         ogTitle={buildProductOgTitle(product)}
-        ogDescription=""
+        ogDescription={buildProductPinDescription(product)}
         keywords={buildProductKeywords(product)}
         canonicalPath={buildProductCanonicalPath(product)}
         ogType="product"

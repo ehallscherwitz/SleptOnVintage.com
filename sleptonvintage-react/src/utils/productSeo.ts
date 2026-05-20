@@ -118,9 +118,12 @@ export function buildProductOgTitle(product: ProductSeoFields): string {
   return truncate(normalizeWhitespace(product.name), 120);
 }
 
-/** Pinterest Save reads data-pin-description before meta tags — use listing name. */
+/** Pinterest Save / og:description — full listing title, size, brand. */
 export function buildProductPinDescription(product: ProductSeoFields): string {
-  return truncate(`${normalizeWhitespace(product.name)} · Size ${product.size}`, 500);
+  return truncate(
+    `${normalizeWhitespace(product.name)} · Size ${product.size} · sleptonvintage`,
+    500,
+  );
 }
 
 /**
@@ -131,6 +134,7 @@ export function buildProductImageAltShort(product: ProductSeoFields): string {
   return truncate(`${normalizeWhitespace(product.name)} — size ${product.size}`, 200);
 }
 
+/** Google meta description (includes listing name for search snippets). */
 export function buildProductMetaDescription(product: ProductSeoFields): string {
   return truncate(
     `${normalizeWhitespace(product.name)}. Size ${product.size}. One-of-one vintage & thrift · Free US shipping. ${SITE_NAME}.`,
