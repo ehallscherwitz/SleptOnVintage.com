@@ -10,10 +10,7 @@ type SeoProps = {
   ogType?: 'website' | 'product' | 'article';
   /** Defaults to `title` — use shorter copy for Pinterest/social saves */
   ogTitle?: string;
-  /**
-   * Defaults to `description`. Pass `''` on product pages so Pinterest Save does not
-   * duplicate title + blurb into one description field.
-   */
+  /** Defaults to `description` */
   ogDescription?: string;
   ogImage?: string;
   /** Pinterest / Facebook product Rich Pins */
@@ -24,11 +21,6 @@ type SeoProps = {
 };
 
 function upsertMeta(name: string, content: string, attr: 'name' | 'property' = 'name') {
-  if (content === '') {
-    const existing = document.querySelector(`meta[${attr}="${name}"]`);
-    existing?.remove();
-    return;
-  }
   if (!content) return;
   let el = document.querySelector(`meta[${attr}="${name}"]`) as HTMLMetaElement | null;
   if (!el) {
@@ -65,7 +57,7 @@ export const Seo: React.FC<SeoProps> = ({
   children,
 }) => {
   const socialTitle = ogTitle ?? title;
-  const socialDescription = ogDescription !== undefined ? ogDescription : (description ?? '');
+  const socialDescription = ogDescription ?? description ?? '';
 
   useEffect(() => {
     document.title = title;
