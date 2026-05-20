@@ -71,7 +71,7 @@ const AdminProductsPage: React.FC = () => {
       <div className="admin-inner">
         <div className="admin-page-head">
           <div>
-            <h1 className="admin-title">Listings (admin)</h1>
+            <h1 className="admin-title">Listings</h1>
             <p className="admin-sub">Open a product to edit details, photos, and order. Drag photos to reorder, then save order.</p>
           </div>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
@@ -79,6 +79,9 @@ const AdminProductsPage: React.FC = () => {
               New listing
             </Link>
             <Link to="/admin" className="admin-btn-secondary" style={{ textDecoration: 'none', display: 'inline-block' }}>
+              Admin
+            </Link>
+            <Link to="/admin/orders" className="admin-btn-secondary" style={{ textDecoration: 'none', display: 'inline-block' }}>
               Orders
             </Link>
             <button type="button" className="admin-btn-secondary" onClick={() => void load()} disabled={loading}>

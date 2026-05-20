@@ -61,8 +61,14 @@ npm run pinterest-catalog
 
 | Variable | Purpose |
 |----------|---------|
-| `PINTEREST_ACCESS_TOKEN` | Bearer token with **catalogs** scopes ([Pinterest developers](https://developers.pinterest.com/apps/)) |
-| `PINTEREST_AD_ACCOUNT_ID` | Optional — if your catalog is under a specific ad account |
+| `PINTEREST_ACCESS_TOKEN` | Bearer token ([Pinterest developers](https://developers.pinterest.com/apps/)) |
+| `PINTEREST_USE_SANDBOX` | `true` while testing (uses `api-sandbox.pinterest.com`); remove or `false` for production |
+| `PINTEREST_AD_ACCOUNT_ID` | Optional — sandbox ad account ID when testing; production ad account ID when live |
+| `PINTEREST_API_BASE` | Optional override, e.g. `https://api-sandbox.pinterest.com/v5` |
+
+**Sandbox test:** Generate **Sandbox** token on app page → set token + `PINTEREST_USE_SANDBOX=true` → redeploy → Admin **Sync all to Pinterest** → check Vercel function logs.
+
+**Go live:** Generate **Production** token with `catalogs:write` → replace token → set `PINTEREST_USE_SANDBOX=false` (or delete) → redeploy.
 
 **What syncs automatically (no deploy needed):**
 

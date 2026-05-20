@@ -38,6 +38,24 @@
   min-width: 0;
 }
 
+.admin-hub-nav {
+  margin-top: 1.25rem;
+  max-width: 280px;
+}
+
+.admin-hub-nav-title {
+  margin: 0 0 0.65rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.admin-hub-nav-links {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
 .admin-page .page-head {
   max-width: 1100px;
   padding: 1.25rem 1.25rem 0.5rem;

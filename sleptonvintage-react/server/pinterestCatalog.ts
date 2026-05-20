@@ -3,7 +3,15 @@
  * @see https://developers.pinterest.com/docs/api/v5/#operation/items_batch/post
  */
 
-const API_BASE = 'https://api.pinterest.com/v5';
+function pinterestApiBase(): string {
+  const explicit = process.env.PINTEREST_API_BASE?.trim();
+  if (explicit) return explicit.replace(/\/$/, '');
+  const useSandbox = (process.env.PINTEREST_USE_SANDBOX || '').trim().toLowerCase();
+  if (useSandbox === 'true' || useSandbox === '1' || useSandbox === 'yes') {
+    return 'https://api-sandbox.pinterest.com/v5';
+  }
+  return 'https://api.pinterest.com/v5';
+}
 const SITE_URL = 'https://sleptonvintage.com';
 const BRAND = 'Slept On Vintage';
 const COUNTRY = 'US';
@@ -100,7 +108,7 @@ async function postItemsBatch(body: Record<string, unknown>): Promise<BatchResul
   const token = process.env.PINTEREST_ACCESS_TOKEN?.trim();
   if (!token) return { ok: false, error: 'PINTEREST_ACCESS_TOKEN not set' };
 
-  const url = new URL(`${API_BASE}/catalogs/items/batch`);
+  const url = new URL(`${pinterestApiBase()}/catalogs/items/batch`);
   const adAccountId = process.env.PINTEREST_AD_ACCOUNT_ID?.trim();
   if (adAccountId) url.searchParams.set('ad_account_id', adAccountId);
 

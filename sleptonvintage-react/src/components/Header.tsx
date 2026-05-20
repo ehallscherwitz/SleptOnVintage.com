@@ -140,19 +140,9 @@ const Header: React.FC = () => {
                    My orders
                  </Link>
                  {showAdminLink && (
-                   <>
-                     <Link
-                       to="/admin/products"
-                       className="user-menu-item"
-                       style={{ display: 'block', textDecoration: 'none', color: 'inherit' }}
-                       onClick={() => setShowUserMenu(false)}
-                     >
-                       Products
-                     </Link>
-                     <Link to="/admin" className="user-menu-item" style={{ display: 'block', textDecoration: 'none', color: 'inherit' }} onClick={() => setShowUserMenu(false)}>
-                       Orders (admin)
-                     </Link>
-                   </>
+                   <Link to="/admin" className="user-menu-item" style={{ display: 'block', textDecoration: 'none', color: 'inherit' }} onClick={() => setShowUserMenu(false)}>
+                     Admin
+                   </Link>
                  )}
                  <button className="user-menu-item" onClick={handleSignOut}>
                    Sign Out

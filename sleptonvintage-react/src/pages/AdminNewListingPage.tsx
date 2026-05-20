@@ -140,6 +140,9 @@ const AdminNewListingPage: React.FC = () => {
             <p className="admin-sub">Create a product, then optionally add photos. Images go to Storage under <code className="admin-code">products/&lt;id&gt;/</code>.</p>
           </div>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <Link to="/admin" className="admin-btn-secondary" style={{ textDecoration: 'none' }}>
+              Admin
+            </Link>
             <Link to="/admin/products" className="admin-btn-secondary" style={{ textDecoration: 'none' }}>
               All listings
             </Link>
