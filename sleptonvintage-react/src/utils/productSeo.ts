@@ -113,16 +113,6 @@ export function buildProductPageTitle(product: ProductSeoFields): string {
   return truncate(`${product.name} — Vintage ${cat} size ${product.size} | ${SITE_NAME}`, 70);
 }
 
-/** Short og:title for Pinterest / social saves (listing name only). */
-export function buildProductOgTitle(product: ProductSeoFields): string {
-  return truncate(normalizeWhitespace(product.name), 120);
-}
-
-/** Short og:description when saving a Pin (not the long Google meta blurb). */
-export function buildProductOgDescription(product: ProductSeoFields): string {
-  return truncate(`Size ${product.size} · ${SITE_NAME}`, 120);
-}
-
 export function buildProductMetaDescription(product: ProductSeoFields): string {
   const cat = categoryPlural(product.category);
   const desc = normalizeWhitespace(
@@ -176,7 +166,7 @@ export function buildProductJsonLd(
     '@context': 'https://schema.org',
     '@type': 'Product',
     name: product.name,
-    description: `${product.name}. Size ${product.size}. One-of-one vintage from ${SITE_NAME}.`,
+    description: buildProductMetaDescription(product),
     image: images.length > 0 ? images : undefined,
     sku: String(product.id),
     brand: { '@type': 'Brand', name: SITE_NAME },

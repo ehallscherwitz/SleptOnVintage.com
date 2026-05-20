@@ -14,9 +14,7 @@ import {
   buildProductImageAlt,
   buildProductJsonLd,
   buildProductMetaDescription,
-  buildProductOgDescription,
   buildProductOgImage,
-  buildProductOgTitle,
   buildProductPageTitle,
   buildProductKeywords,
 } from '../utils/productSeo';
@@ -129,8 +127,6 @@ const ProductDetailPage: React.FC = () => {
       <Seo
         title={buildProductPageTitle(product)}
         description={buildProductMetaDescription(product)}
-        ogTitle={buildProductOgTitle(product)}
-        ogDescription={buildProductOgDescription(product)}
         keywords={buildProductKeywords(product)}
         canonicalPath={buildProductCanonicalPath(product)}
         ogType="product"
