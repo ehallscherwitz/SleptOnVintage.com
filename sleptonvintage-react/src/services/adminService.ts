@@ -276,7 +276,18 @@ export const adminService = {
   },
 
   async syncPinterestCatalog(): Promise<{
-    data?: { ok?: boolean; synced?: number; skipped?: number; errors?: string[] };
+    data?: {
+      ok?: boolean;
+      synced?: number;
+      skipped?: number;
+      errors?: string[];
+      pinterest?: {
+        apiBase: string;
+        sandboxEnv: string;
+        tokenKind: string;
+        hasAdAccountId: boolean;
+      };
+    };
     error?: string;
   }> {
     try {

@@ -3,7 +3,7 @@
  * @see https://developers.pinterest.com/docs/api/v5/#operation/items_batch/post
  */
 
-function pinterestApiBase(): string {
+export function pinterestApiBase(): string {
   const explicit = process.env.PINTEREST_API_BASE?.trim();
   if (explicit) return explicit.replace(/\/$/, '');
   const useSandbox = (process.env.PINTEREST_USE_SANDBOX || '').trim().toLowerCase();
@@ -46,6 +46,36 @@ function supabasePublicUrl(): string | null {
 
 export function isPinterestCatalogConfigured(): boolean {
   return Boolean(process.env.PINTEREST_ACCESS_TOKEN?.trim());
+}
+
+/** Non-secret summary for admin sync errors (token prefix only). */
+export function getPinterestSyncDiagnostics(): {
+  apiBase: string;
+  sandboxEnv: string;
+  tokenKind: string;
+  hasAdAccountId: boolean;
+} {
+  const token = process.env.PINTEREST_ACCESS_TOKEN?.trim() || '';
+  const sandboxEnv = (process.env.PINTEREST_USE_SANDBOX || '').trim() || '(unset)';
+  const useSandbox = ['true', '1', 'yes'].includes(sandboxEnv.toLowerCase());
+  let tokenKind = 'dashboard / other (no pina/pinc prefix)';
+  if (token.startsWith('pina')) tokenKind = 'OAuth authorization_code (pina)';
+  else if (token.startsWith('pinc')) tokenKind = 'OAuth client_credentials (pinc)';
+
+  const hostIsSandbox = pinterestApiBase().includes('api-sandbox');
+  if (useSandbox && !hostIsSandbox) {
+    tokenKind += ' — WARNING: sandbox env flag but production API host';
+  }
+  if (!useSandbox && hostIsSandbox) {
+    tokenKind += ' — WARNING: sandbox API host but sandbox flag off';
+  }
+
+  return {
+    apiBase: pinterestApiBase(),
+    sandboxEnv,
+    tokenKind,
+    hasAdAccountId: Boolean(process.env.PINTEREST_AD_ACCOUNT_ID?.trim()),
+  };
 }
 
 function feedTitle(name: string): string {
@@ -104,6 +134,27 @@ export function productToPinterestItem(product: PinterestProductRow): {
 
 type BatchResult = { ok: true; batchId?: string } | { ok: false; error: string; status?: number };
 
+function formatPinterestApiError(raw: string, status: number): string {
+  const msg = String(raw || '').trim() || `HTTP ${status}`;
+  if (/consumer type is not supported/i.test(msg)) {
+    return (
+      'Pinterest rejected this token type (401: consumer type not supported). ' +
+      'Common causes: app trial not approved yet; Production limited test token (boards/pins only); ' +
+      'sandbox token used against api.pinterest.com; or production token with PINTEREST_USE_SANDBOX=true. ' +
+      'Fix: My apps → Generate token → choose Sandbox (not Production limited), set PINTEREST_USE_SANDBOX=true, redeploy. ' +
+      'Or use full OAuth at api-sandbox.pinterest.com/v5/oauth/token with catalogs:write. ' +
+      'CSV feed meanwhile: https://sleptonvintage.com/pinterest-catalog.csv'
+    );
+  }
+  if (status === 401) {
+    return `Pinterest unauthorized (401): ${msg}`;
+  }
+  if (status === 403) {
+    return `Pinterest forbidden (403) — token may be read-only; need catalogs:write: ${msg}`;
+  }
+  return msg;
+}
+
 async function postItemsBatch(body: Record<string, unknown>): Promise<BatchResult> {
   const token = process.env.PINTEREST_ACCESS_TOKEN?.trim();
   if (!token) return { ok: false, error: 'PINTEREST_ACCESS_TOKEN not set' };
@@ -130,8 +181,8 @@ async function postItemsBatch(body: Record<string, unknown>): Promise<BatchResul
   }
 
   if (!res.ok) {
-    const msg = json?.message || text || res.statusText;
-    return { ok: false, error: msg.slice(0, 500), status: res.status };
+    const msg = formatPinterestApiError(json?.message || text || res.statusText, res.status);
+    return { ok: false, error: msg.slice(0, 800), status: res.status };
   }
 
   return { ok: true, batchId: json?.batch_id };
@@ -163,7 +214,7 @@ export async function upsertPinterestProductsStrict(
     }
   }
 
-  return { synced, skipped, errors };
+  return { synced, skipped, errors: [...new Set(errors)] };
 }
 
 export async function deletePinterestProductIds(productIds: number[]): Promise<string[]> {

@@ -8,6 +8,10 @@ type SeoProps = {
   keywords?: string;
   canonicalPath?: string;
   ogType?: 'website' | 'product' | 'article';
+  /** Defaults to `title` — use shorter copy for Pinterest/social saves */
+  ogTitle?: string;
+  /** Defaults to `description` */
+  ogDescription?: string;
   ogImage?: string;
   /** Pinterest / Facebook product Rich Pins */
   productPriceCents?: number;
@@ -44,12 +48,17 @@ export const Seo: React.FC<SeoProps> = ({
   keywords,
   canonicalPath,
   ogType = 'website',
+  ogTitle,
+  ogDescription,
   ogImage,
   productPriceCents,
   productAvailable,
   noindex = false,
   children,
 }) => {
+  const socialTitle = ogTitle ?? title;
+  const socialDescription = ogDescription ?? description ?? '';
+
   useEffect(() => {
     document.title = title;
 
@@ -61,8 +70,8 @@ export const Seo: React.FC<SeoProps> = ({
 
     upsertMeta('robots', noindex ? 'noindex, nofollow' : 'index, follow');
 
-    upsertMeta('og:title', title, 'property');
-    upsertMeta('og:description', description ?? '', 'property');
+    upsertMeta('og:title', socialTitle, 'property');
+    upsertMeta('og:description', socialDescription, 'property');
     upsertMeta('og:type', ogType, 'property');
     upsertMeta('og:url', canonical, 'property');
     upsertMeta('og:site_name', SITE_NAME, 'property');
@@ -73,16 +82,20 @@ export const Seo: React.FC<SeoProps> = ({
       upsertMeta('product:price:currency', 'USD', 'property');
     }
     if (ogType === 'product' && productAvailable != null) {
-      upsertMeta('product:availability', productAvailable ? 'instock' : 'oos', 'property');
+      const availability = productAvailable ? 'instock' : 'out of stock';
+      upsertMeta('product:availability', availability, 'property');
+      upsertMeta('og:availability', availability, 'property');
     }
 
     upsertMeta('twitter:card', ogImage ? 'summary_large_image' : 'summary');
-    upsertMeta('twitter:title', title);
-    if (description) upsertMeta('twitter:description', description);
+    upsertMeta('twitter:title', socialTitle);
+    if (socialDescription) upsertMeta('twitter:description', socialDescription);
     if (ogImage) upsertMeta('twitter:image', ogImage);
   }, [
     title,
     description,
+    ogTitle,
+    ogDescription,
     keywords,
     canonicalPath,
     ogType,

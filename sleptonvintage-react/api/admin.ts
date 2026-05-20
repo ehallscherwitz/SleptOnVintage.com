@@ -14,7 +14,7 @@ import {
   schedulePinterestSyncProductIds,
   syncAllPinterestProducts,
 } from '../server/pinterestSync.js';
-import { isPinterestCatalogConfigured } from '../server/pinterestCatalog.js';
+import { getPinterestSyncDiagnostics, isPinterestCatalogConfigured } from '../server/pinterestCatalog.js';
 
 type AdminOk = Extract<AdminAuthResult, { ok: true }>;
 
@@ -631,6 +631,7 @@ async function handleSyncPinterestCatalog(_req: VercelRequest, res: VercelRespon
   return res.status(200).json({
     ok: result.errors.length === 0,
     ...result,
+    ...(result.errors.length > 0 ? { pinterest: getPinterestSyncDiagnostics() } : {}),
   });
 }
 

@@ -50,8 +50,12 @@ export const AdminCatalogTools: React.FC<AdminCatalogToolsProps> = ({ disabled =
       return;
     }
     const errs = data?.errors?.length ? ` · Errors: ${data.errors.join('; ')}` : '';
+    const diag = data?.pinterest;
+    const diagLine = diag
+      ? ` · Config: ${diag.apiBase} · sandbox=${diag.sandboxEnv} · ${diag.tokenKind}`
+      : '';
     setPinterestSyncResult(
-      `Pinterest: synced ${data?.synced ?? 0} · skipped ${data?.skipped ?? 0} (no image)${errs}`,
+      `Pinterest: synced ${data?.synced ?? 0} · skipped ${data?.skipped ?? 0} (no image)${errs}${diagLine}`,
     );
   };
 
