@@ -73,10 +73,24 @@ function storageImageUrl(env, imagePath) {
   return `${env.url.replace(/\/$/, '')}/storage/v1/object/public/${IMAGES_BUCKET}/${path}`;
 }
 
+/** Pinterest: ISO 4217 e.g. 19.99USD (Error 113 rejects bad/missing prices). */
 function formatPrice(cents) {
   const n = Number(cents);
-  if (!Number.isFinite(n) || n < 0) return '0.00 USD';
-  return `${(n / 100).toFixed(2)} USD`;
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return `${(n / 100).toFixed(2)}USD`;
+}
+
+const GOOGLE_PRODUCT_CATEGORY = {
+  shirts: 'Apparel & Accessories > Clothing > Shirts',
+  sweaters: 'Apparel & Accessories > Clothing > Sweaters',
+  hoodies: 'Apparel & Accessories > Clothing > Hoodies',
+  jackets: 'Apparel & Accessories > Clothing > Coats & Jackets',
+  pants: 'Apparel & Accessories > Clothing > Pants',
+  shorts: 'Apparel & Accessories > Clothing > Shorts',
+};
+
+function googleProductCategory(category) {
+  return GOOGLE_PRODUCT_CATEGORY[category] ?? 'Apparel & Accessories > Clothing';
 }
 
 async function main() {
@@ -99,11 +113,19 @@ async function main() {
 
   const rows = [];
   let skippedNoImage = 0;
+  let skippedBadPrice = 0;
 
   for (const p of data ?? []) {
     const imageLink = storageImageUrl(env, p.image);
     if (!imageLink) {
       skippedNoImage += 1;
+      continue;
+    }
+
+    const price = formatPrice(p.price);
+    if (!price) {
+      skippedBadPrice += 1;
+      console.warn(`Pinterest catalog: skip id ${p.id} — invalid price (${p.price})`);
       continue;
     }
 
@@ -115,11 +137,11 @@ async function main() {
         feedDescription(p.name, p.size, p.category),
         link,
         imageLink,
-        formatPrice(p.price),
+        price,
         p.available ? 'in stock' : 'out of stock',
         'used',
         BRAND,
-        'Apparel & Accessories > Clothing',
+        googleProductCategory(p.category),
       ]),
     );
   }
@@ -127,7 +149,7 @@ async function main() {
   const csv = `${HEADERS.join(',')}\n${rows.join('\n')}\n`;
   writeFileSync(OUT, csv, 'utf8');
   console.log(
-    `Pinterest catalog: wrote ${OUT} (${rows.length} products, ${skippedNoImage} skipped without image)`,
+    `Pinterest catalog: wrote ${OUT} (${rows.length} products, ${skippedNoImage} skipped without image, ${skippedBadPrice} skipped bad price)`,
   );
   console.log(`Feed URL: ${SITE_URL}/pinterest-catalog.csv`);
 }

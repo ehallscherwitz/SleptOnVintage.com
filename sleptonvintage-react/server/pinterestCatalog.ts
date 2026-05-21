@@ -93,10 +93,24 @@ function feedDescription(name: string, size: string, category: string): string {
   );
 }
 
-function formatPrice(cents: number): string {
+/** Pinterest feed: ISO 4217 style e.g. 19.99USD (see catalog Error 113). */
+function formatPrice(cents: number): string | null {
   const n = Number(cents);
-  if (!Number.isFinite(n) || n < 0) return '0.00 USD';
-  return `${(n / 100).toFixed(2)} USD`;
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return `${(n / 100).toFixed(2)}USD`;
+}
+
+const GOOGLE_PRODUCT_CATEGORY: Record<string, string> = {
+  shirts: 'Apparel & Accessories > Clothing > Shirts',
+  sweaters: 'Apparel & Accessories > Clothing > Sweaters',
+  hoodies: 'Apparel & Accessories > Clothing > Hoodies',
+  jackets: 'Apparel & Accessories > Clothing > Coats & Jackets',
+  pants: 'Apparel & Accessories > Clothing > Pants',
+  shorts: 'Apparel & Accessories > Clothing > Shorts',
+};
+
+function googleProductCategory(category: string): string {
+  return GOOGLE_PRODUCT_CATEGORY[category] ?? 'Apparel & Accessories > Clothing';
 }
 
 export function productImageLink(imagePath: string | null | undefined): string | null {
@@ -114,6 +128,9 @@ export function productToPinterestItem(product: PinterestProductRow): {
   const imageLink = productImageLink(product.image);
   if (!imageLink) return null;
 
+  const price = formatPrice(product.price);
+  if (!price) return null;
+
   const id = String(product.id);
   return {
     item_id: id,
@@ -123,11 +140,11 @@ export function productToPinterestItem(product: PinterestProductRow): {
       description: feedDescription(product.name, product.size, product.category).slice(0, 10000),
       link: `${SITE_URL}/product/${product.id}`,
       image_link: imageLink,
-      price: formatPrice(product.price),
+      price,
       availability: product.available ? 'in stock' : 'out of stock',
       condition: 'used',
       brand: BRAND,
-      google_product_category: 'Apparel & Accessories > Clothing',
+      google_product_category: googleProductCategory(product.category),
       size: String(product.size).slice(0, 100),
     },
   };
