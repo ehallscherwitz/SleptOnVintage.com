@@ -15,7 +15,8 @@ export function pinterestApiBase(): string {
 const SITE_URL = 'https://sleptonvintage.com';
 const BRAND = 'Slept On Vintage';
 const COUNTRY = 'US';
-const LANGUAGE = 'en';
+/** Pinterest CatalogsLocale — must match feed profile (e.g. English US). */
+const LANGUAGE = 'en-US';
 const BATCH_CHUNK = 50;
 
 export type PinterestProductRow = {
