@@ -70,6 +70,7 @@ export async function syncAllPinterestProducts(): Promise<{
   const { data, error } = await db
     .from('products')
     .select(PRODUCT_SELECT)
+    .eq('available', true)
     .order('id', { ascending: true });
 
   if (error) {

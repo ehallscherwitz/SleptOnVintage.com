@@ -103,7 +103,8 @@ async function main() {
   const supabase = createClient(env.url, env.key);
   const { data, error } = await supabase
     .from('products')
-    .select('id, name, size, category, available, image, price')
+    .select('id, name, size, category, image, price')
+    .eq('available', true)
     .order('id', { ascending: true });
 
   if (error) {
@@ -138,7 +139,7 @@ async function main() {
         link,
         imageLink,
         price,
-        p.available ? 'in stock' : 'out of stock',
+        'in stock',
         'used',
         BRAND,
         googleProductCategory(p.category),

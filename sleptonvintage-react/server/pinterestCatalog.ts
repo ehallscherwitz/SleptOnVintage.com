@@ -125,6 +125,8 @@ export function productToPinterestItem(product: PinterestProductRow): {
   item_id: string;
   attributes: Record<string, string>;
 } | null {
+  if (!product.available) return null;
+
   const imageLink = productImageLink(product.image);
   if (!imageLink) return null;
 
