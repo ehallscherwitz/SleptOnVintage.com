@@ -100,17 +100,21 @@ function formatPrice(cents: number): string | null {
   return `${(n / 100).toFixed(2)}USD`;
 }
 
+/** Paths must match Google product taxonomy (Pinterest rejects invalid nodes). */
 const GOOGLE_PRODUCT_CATEGORY: Record<string, string> = {
-  shirts: 'Apparel & Accessories > Clothing > Shirts',
-  sweaters: 'Apparel & Accessories > Clothing > Sweaters',
-  hoodies: 'Apparel & Accessories > Clothing > Hoodies',
-  jackets: 'Apparel & Accessories > Clothing > Coats & Jackets',
+  shirts: 'Apparel & Accessories > Clothing > Shirts & Tops',
+  sweaters: 'Apparel & Accessories > Clothing > Shirts & Tops',
+  hoodies: 'Apparel & Accessories > Clothing > Shirts & Tops',
+  jackets: 'Apparel & Accessories > Clothing > Outerwear > Coats & Jackets',
   pants: 'Apparel & Accessories > Clothing > Pants',
   shorts: 'Apparel & Accessories > Clothing > Shorts',
 };
 
 function googleProductCategory(category: string): string {
-  return GOOGLE_PRODUCT_CATEGORY[category] ?? 'Apparel & Accessories > Clothing';
+  return (
+    GOOGLE_PRODUCT_CATEGORY[category] ??
+    'Apparel & Accessories > Clothing > Shirts & Tops'
+  );
 }
 
 export function productImageLink(imagePath: string | null | undefined): string | null {

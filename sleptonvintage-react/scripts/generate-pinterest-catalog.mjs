@@ -80,17 +80,18 @@ function formatPrice(cents) {
   return `${(n / 100).toFixed(2)}USD`;
 }
 
+/** Google product taxonomy paths (invalid nodes are not published by Pinterest). */
 const GOOGLE_PRODUCT_CATEGORY = {
-  shirts: 'Apparel & Accessories > Clothing > Shirts',
-  sweaters: 'Apparel & Accessories > Clothing > Sweaters',
-  hoodies: 'Apparel & Accessories > Clothing > Hoodies',
-  jackets: 'Apparel & Accessories > Clothing > Coats & Jackets',
+  shirts: 'Apparel & Accessories > Clothing > Shirts & Tops',
+  sweaters: 'Apparel & Accessories > Clothing > Shirts & Tops',
+  hoodies: 'Apparel & Accessories > Clothing > Shirts & Tops',
+  jackets: 'Apparel & Accessories > Clothing > Outerwear > Coats & Jackets',
   pants: 'Apparel & Accessories > Clothing > Pants',
   shorts: 'Apparel & Accessories > Clothing > Shorts',
 };
 
 function googleProductCategory(category) {
-  return GOOGLE_PRODUCT_CATEGORY[category] ?? 'Apparel & Accessories > Clothing';
+  return GOOGLE_PRODUCT_CATEGORY[category] ?? 'Apparel & Accessories > Clothing > Shirts & Tops';
 }
 
 async function main() {
