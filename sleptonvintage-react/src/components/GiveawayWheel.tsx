@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef } from 'react';
-import * as SpinWheel from 'spin-wheel';
+import { Wheel } from 'spin-wheel';
 
 export type GiveawayWheelSegment = {
   id: string;
@@ -33,13 +33,7 @@ export const GiveawayWheel: React.FC<Props> = ({ segments, selectedId, spin, onS
     if (!host) return;
 
     host.innerHTML = '';
-    const canvas = document.createElement('canvas');
-    canvas.width = 720;
-    canvas.height = 720;
-    host.appendChild(canvas);
-
-    const WheelCtor = (SpinWheel as any).Wheel;
-    const wheel = new WheelCtor(canvas, {
+    const wheel = new Wheel(host, {
       items: items.map((it, idx) => ({
         label: it.label,
         backgroundColor: idx % 2 === 0 ? '#121212' : '#1e1e1e',

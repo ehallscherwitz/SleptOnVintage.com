@@ -588,6 +588,7 @@ const AdminProductEditPage: React.FC = () => {
               onChange={(e) => setGiveawayDuration(parseInt(e.target.value, 10))}
               style={{ maxWidth: 240 }}
             >
+              <option value={3 * 60}>3 minutes (testing)</option>
               <option value={60 * 60}>1 hour</option>
               <option value={3 * 60 * 60}>3 hours</option>
               <option value={6 * 60 * 60}>6 hours</option>

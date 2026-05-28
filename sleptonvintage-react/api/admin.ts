@@ -650,10 +650,10 @@ async function handleCreateGiveaway(req: VercelRequest, res: VercelResponse, aut
   const durationSeconds = asDurationSeconds(body.durationSeconds);
   if (!durationSeconds) return res.status(400).json({ error: 'durationSeconds required (integer seconds)' });
 
-  const MIN = 60 * 60; // 1 hour
+  const MIN = 3 * 60; // 3 minutes (testing)
   const MAX = 60 * 60 * 24 * 7; // 1 week
   if (durationSeconds < MIN || durationSeconds > MAX) {
-    return res.status(400).json({ error: 'durationSeconds must be between 3600 (1h) and 604800 (1w)' });
+    return res.status(400).json({ error: 'durationSeconds must be between 180 (3m) and 604800 (1w)' });
   }
 
   const { data: product, error: prodErr } = await auth.service

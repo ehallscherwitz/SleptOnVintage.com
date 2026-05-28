@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Header from '../components/Header';
+import { PageHeadingRow } from '../components/PageHeadingRow';
 import { Seo } from '../components/Seo';
 import { SITE_NAME } from '../constants/legal';
 import { giveawayService, type GiveawayEntry } from '../services/giveawayService';
@@ -244,6 +245,7 @@ const GiveawayPage: React.FC = () => {
     <div className="giveaway-page">
       <Seo title={`Giveaway — ${SITE_NAME}`} description="Enter the current giveaway and watch the wheel pick a winner." canonicalPath="/giveaway" />
       <Header />
+      <PageHeadingRow title="Giveaway" fallbackTo="/" />
       <main className="giveaway-inner">
         <h1 className="giveaway-title">Giveaway</h1>
 
@@ -285,10 +287,6 @@ const GiveawayPage: React.FC = () => {
                   </div>
                 </div>
 
-                <p className="giveaway-disclaimer">
-                  By entering, you agree your <strong>full name</strong> will be visible to other visitors on the wheel, and we may email you future offers and promos.
-                </p>
-
                 {giveaway.resolved_at && (
                   <div className="giveaway-winner">
                     <div className="giveaway-winner-label">Winner</div>
@@ -325,17 +323,6 @@ const GiveawayPage: React.FC = () => {
                   Replay window: this giveaway stays visible for 24 hours after it ends.
                 </p>
               )}
-            </section>
-
-            <section className="giveaway-names">
-              <h3 className="giveaway-names-title">Names on the wheel</h3>
-              <div className="giveaway-names-grid">
-                {entries.map((e) => (
-                  <div key={e.id} className={`giveaway-name ${giveaway.winner_email && e.email === giveaway.winner_email ? 'winner' : ''}`}>
-                    {e.full_name}
-                  </div>
-                ))}
-              </div>
             </section>
           </>
         )}

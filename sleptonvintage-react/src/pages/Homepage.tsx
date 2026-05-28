@@ -193,14 +193,14 @@ const Homepage: React.FC = () => {
         })}
       </div>
       <div className="homepage-all-items-wrap">
-        <Link to="/search" className="homepage-all-items-btn">
-          ALL ITEMS <i className="fa-solid fa-arrow-right" aria-hidden="true" />
-        </Link>
-      </div>
-      <div className="homepage-all-items-wrap" style={{ marginTop: 12 }}>
         <Link to="/giveaway" className="homepage-all-items-btn">
           GIVEAWAY{giveawayTimeLeft ? ` · ${giveawayTimeLeft}` : ''}{' '}
           <i className="fa-solid fa-arrow-right" aria-hidden="true" />
+        </Link>
+      </div>
+      <div className="homepage-all-items-wrap" style={{ marginTop: 12 }}>
+        <Link to="/search" className="homepage-all-items-btn">
+          ALL ITEMS <i className="fa-solid fa-arrow-right" aria-hidden="true" />
         </Link>
       </div>
     </div>
