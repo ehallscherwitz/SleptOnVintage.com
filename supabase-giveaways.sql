@@ -5,6 +5,13 @@ begin;
 
 create extension if not exists "pgcrypto";
 
+-- Keep compatible with older installs that don't yet have these columns.
+alter table public.products
+  add column if not exists updated_at timestamptz not null default now();
+
+alter table public.products
+  add column if not exists storage_prefix text;
+
 -- A giveaway is associated to exactly one product listing.
 create table if not exists public.giveaways (
   id uuid primary key default gen_random_uuid(),

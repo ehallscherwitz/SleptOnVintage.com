@@ -321,4 +321,19 @@ export const adminService = {
       return { error: networkErrorHint(e) || 'Create giveaway failed' };
     }
   },
+
+  async cancelGiveaway(body: { productId: number }): Promise<{ ok?: boolean; error?: string }> {
+    try {
+      const response = await fetch(ADMIN_API, {
+        method: 'POST',
+        headers: await authHeaders(),
+        body: JSON.stringify({ op: 'cancel-giveaway', ...body }),
+      });
+      const data = await parseJson(response);
+      if (!response.ok) return { error: data?.error || `HTTP ${response.status}` };
+      return { ok: true };
+    } catch (e) {
+      return { error: networkErrorHint(e) || 'Cancel giveaway failed' };
+    }
+  },
 };

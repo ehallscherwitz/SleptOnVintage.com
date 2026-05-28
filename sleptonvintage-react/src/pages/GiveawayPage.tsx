@@ -252,9 +252,6 @@ const GiveawayPage: React.FC = () => {
         ) : !giveaway ? (
           <div className="giveaway-empty">
             <h2 className="giveaway-empty-title">Next giveaway coming soon!</h2>
-            <p className="giveaway-muted">
-              Check back later — when a giveaway is live, you’ll be able to sign in with Google and add your name to the wheel.
-            </p>
           </div>
         ) : (
           <>

@@ -693,6 +693,31 @@ async function handleCreateGiveaway(req: VercelRequest, res: VercelResponse, aut
   return res.status(201).json({ giveaway: data });
 }
 
+async function handleCancelGiveaway(req: VercelRequest, res: VercelResponse, auth: AdminOk) {
+  const body = parseBody(req);
+  const idRaw = body.productId;
+  const productId = typeof idRaw === 'number' ? idRaw : typeof idRaw === 'string' ? parseInt(idRaw, 10) : NaN;
+  if (!Number.isFinite(productId)) return res.status(400).json({ error: 'productId required' });
+
+  const nowIso = new Date().toISOString();
+  const { data: active, error: findErr } = await auth.service
+    .from('giveaways')
+    .select('id, product_id, ends_at, resolved_at')
+    .eq('product_id', productId)
+    .is('resolved_at', null)
+    .gt('ends_at', nowIso)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (findErr) return res.status(500).json({ error: findErr.message });
+  if (!active?.id) return res.status(404).json({ error: 'No active giveaway found for this product.' });
+
+  // Delete so entries are removed and the product returns to normal listings immediately.
+  const { error: delErr } = await auth.service.from('giveaways').delete().eq('id', active.id);
+  if (delErr) return res.status(500).json({ error: delErr.message });
+  return res.status(200).json({ ok: true });
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
@@ -742,6 +767,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return handleSyncPinterestCatalog(req, res, auth);
     case 'create-giveaway':
       return handleCreateGiveaway(req, res, auth);
+    case 'cancel-giveaway':
+      return handleCancelGiveaway(req, res, auth);
     default:
       return res.status(400).json({ error: 'Missing or unknown op in JSON body' });
   }

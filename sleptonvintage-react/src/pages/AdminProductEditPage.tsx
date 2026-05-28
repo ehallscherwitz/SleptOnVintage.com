@@ -409,6 +409,24 @@ const AdminProductEditPage: React.FC = () => {
     }
   };
 
+  const cancelGiveaway = async () => {
+    if (!Number.isFinite(productId)) return;
+    const ok = window.confirm('Cancel the active giveaway for this listing? Entries will be deleted.');
+    if (!ok) return;
+    setSaving(true);
+    setMsg(null);
+    setErr(null);
+    try {
+      const { error: e } = await adminService.cancelGiveaway({ productId });
+      if (e) setErr(e);
+      else setMsg('Giveaway cancelled.');
+    } catch (ex) {
+      setErr(ex instanceof Error ? ex.message : 'Cancel giveaway failed');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const moveInGallery = (from: number, to: number) => {
     if (from === to || from < 0 || to < 0 || from >= files.length || to >= files.length) return;
     const next = [...files];
@@ -580,6 +598,9 @@ const AdminProductEditPage: React.FC = () => {
             </select>
             <button type="button" className="checkout-btn-primary" disabled={saving} onClick={() => void createGiveaway()}>
               {saving ? 'Creating…' : 'Create giveaway'}
+            </button>
+            <button type="button" className="admin-btn-danger-solid" disabled={saving} onClick={() => void cancelGiveaway()}>
+              Cancel giveaway
             </button>
             <Link to="/giveaway" className="admin-btn-secondary" style={{ textDecoration: 'none' }}>
               Open giveaway page
