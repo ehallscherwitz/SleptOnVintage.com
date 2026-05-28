@@ -1,8 +1,9 @@
 import confetti from 'canvas-confetti';
-import { playWinTrumpet } from './giveawaySounds';
+import { playWinTrumpet, unlockGiveawayAudio } from './giveawaySounds';
 
 /** Short celebratory burst from both sides of the viewport. */
 export function confettiBurst(durationMs = 2500): void {
+  unlockGiveawayAudio();
   playWinTrumpet();
   try {
     const end = Date.now() + durationMs;

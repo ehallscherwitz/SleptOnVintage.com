@@ -160,8 +160,8 @@ export const GiveawayWheel: React.FC<Props> = ({ segments, selectedId, idle = fa
     if (idle && items.length > 0) {
       wheel.rotationResistance = 0;
       wheel.spin(IDLE_SPIN_SPEED);
-      startWheelSpinSound('idle');
-      return () => stopWheelSpinSound();
+      stopWheelSpinSound();
+      return;
     }
 
     wheel.stop();
@@ -186,7 +186,7 @@ export const GiveawayWheel: React.FC<Props> = ({ segments, selectedId, idle = fa
 
     spinStartedRef.current = true;
     wheel.stop();
-    startWheelSpinSound('reveal');
+    startWheelSpinSound();
 
     const handleRest = () => {
       wheel.onRest = null;

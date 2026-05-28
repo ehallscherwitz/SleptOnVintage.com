@@ -11,7 +11,13 @@ import { adminService } from '../services/adminService';
 import { isAdminEmail } from '../utils/adminAccess';
 import { confettiBurst } from '../utils/confetti';
 import { clearGiveawayRevealSeen, markGiveawayRevealSeen } from '../utils/giveawayReveal';
-import { startGiveawayAmbience, stopGiveawayAmbience, unlockGiveawayAudio } from '../utils/giveawaySounds';
+import {
+  isGiveawayAudioUnlocked,
+  preloadGiveawayAudio,
+  startGiveawayAmbience,
+  stopGiveawayAmbience,
+  unlockGiveawayAudio,
+} from '../utils/giveawaySounds';
 
 function nowMs(): number {
   return Date.now();
@@ -83,6 +89,7 @@ const GiveawayPage: React.FC = () => {
   }, [productLike]);
 
   const pollTimerRef = useRef<number | null>(null);
+  const [audioNeedsTap, setAudioNeedsTap] = useState(false);
 
   async function refresh() {
     setErr(null);
@@ -106,14 +113,35 @@ const GiveawayPage: React.FC = () => {
   }
 
   useEffect(() => {
-    const unlock = () => unlockGiveawayAudio();
-    window.addEventListener('pointerdown', unlock, { once: true });
-    window.addEventListener('keydown', unlock, { once: true });
+    preloadGiveawayAudio();
+  }, []);
+
+  useEffect(() => {
+    const unlock = () => {
+      unlockGiveawayAudio();
+      setAudioNeedsTap(false);
+    };
+    const opts = { capture: true } as const;
+    window.addEventListener('pointerdown', unlock, opts);
+    window.addEventListener('touchstart', unlock, opts);
+    window.addEventListener('keydown', unlock, opts);
     return () => {
-      window.removeEventListener('pointerdown', unlock);
-      window.removeEventListener('keydown', unlock);
+      window.removeEventListener('pointerdown', unlock, opts);
+      window.removeEventListener('touchstart', unlock, opts);
+      window.removeEventListener('keydown', unlock, opts);
     };
   }, []);
+
+  useEffect(() => {
+    if (loading || !giveaway) {
+      setAudioNeedsTap(false);
+      return;
+    }
+    const id = window.setTimeout(() => {
+      if (!isGiveawayAudioUnlocked()) setAudioNeedsTap(true);
+    }, 1200);
+    return () => window.clearTimeout(id);
+  }, [loading, giveaway?.id]);
 
   useEffect(() => {
     if (loading || !giveaway) {
@@ -308,6 +336,18 @@ const GiveawayPage: React.FC = () => {
       <Header />
       <PageHeadingRow title="Giveaway" fallbackTo="/" />
       <main className="giveaway-inner">
+        {audioNeedsTap && !loading && giveaway && (
+          <button
+            type="button"
+            className="giveaway-audio-hint"
+            onClick={() => {
+              unlockGiveawayAudio();
+              setAudioNeedsTap(false);
+            }}
+          >
+            Tap to enable sound
+          </button>
+        )}
         {loading ? (
           <p className="giveaway-muted">Loading…</p>
         ) : !giveaway ? (
@@ -381,7 +421,7 @@ const GiveawayPage: React.FC = () => {
                     <div className="giveaway-participant-promo">
                       <div className="giveaway-participant-promo-label">For all participants</div>
                       <p className="giveaway-participant-promo-text">
-                        Use code <strong className="giveaway-promo-code">YOGURT</strong> for 15% sitewide!
+                        Use code <strong className="giveaway-promo-code">YOGURT</strong> for 15% off sitewide!
                       </p>
                     </div>
                   </>

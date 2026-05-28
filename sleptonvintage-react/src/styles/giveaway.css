@@ -14,6 +14,25 @@
   color: rgba(255, 255, 255, 0.72);
 }
 
+.giveaway-audio-hint {
+  display: block;
+  width: 100%;
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 209, 102, 0.55);
+  border-radius: 8px;
+  background: rgba(255, 209, 102, 0.1);
+  color: #ffd166;
+  font: inherit;
+  font-size: 0.95rem;
+  text-align: center;
+  cursor: pointer;
+}
+
+.giveaway-audio-hint:hover {
+  background: rgba(255, 209, 102, 0.16);
+}
+
 .giveaway-empty {
   margin-top: 24px;
   padding: 22px;

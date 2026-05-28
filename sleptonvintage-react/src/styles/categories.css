@@ -305,8 +305,22 @@
 .homepage-all-items-wrap {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0 40px 4.5rem;
+  padding: 0 40px 0;
   box-sizing: border-box;
+}
+
+.homepage-all-items-wrap--secondary {
+  padding-bottom: 4.5rem;
+  padding-top: 0.75rem;
+}
+
+.homepage-giveaway-btn {
+  border-color: rgba(255, 209, 102, 0.75);
+  background-color: rgba(255, 209, 102, 0.08);
+}
+
+.homepage-giveaway-btn:hover {
+  background-color: rgba(255, 209, 102, 0.14);
 }
 
 .homepage-all-items-btn {
@@ -335,7 +349,8 @@
 }
 
 @media (max-width: 550px) {
-  .homepage-all-items-wrap {
+  .homepage-all-items-wrap,
+  .homepage-all-items-wrap--secondary {
     padding-left: 20px;
     padding-right: 20px;
   }
