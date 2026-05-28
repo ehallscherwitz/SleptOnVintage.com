@@ -1,31 +1,22 @@
 # Slept On Vintage
 
-**Live site:** [sleptonvintage.com](https://sleptonvintage.com)
+**Live:** [sleptonvintage.com](https://sleptonvintage.com)
 
-Full-stack e-commerce for my vintage clothing business — designed, built, and operated end-to-end as a CS student. The storefront, checkout, inventory admin, and marketing automation all run in production on real orders.
+Production vintage shop — React storefront, Supabase backend, Square checkout, Vercel hosting. Built and run end-to-end (not a template).
 
----
-
-## About this project
-
-I started with a static HTML/CSS prototype (`sleptonvintage-vanilla/`) to nail layout and category UX, then rebuilt the production app in **React + TypeScript** with a real backend: **Supabase** (Postgres, Auth, Storage, RLS) and **Square** for payments. Everything deploys on **Vercel** (SPA + serverless API routes).
-
-This repo is meant to show how I think as a software engineer: product ownership, full-stack implementation, payments correctness, SEO/discovery, and operational tooling I actually use day-to-day to run the shop.
+Early static prototype lives in `sleptonvintage-vanilla/`; everything customer-facing is in `sleptonvintage-react/`.
 
 ---
 
-## Highlights (for reviewers)
+## Stack
 
-| Area | What I implemented |
-|------|-------------------|
-| **Product & UX** | Custom UI/UX (not a template store); category browsing, search, product detail galleries, responsive layout, legal pages (terms, privacy, contact). |
-| **Payments** | Square Web Payments SDK on the client; server-side order creation + payment capture via Vercel functions; idempotent payment keys; automatic refund path if inventory races at checkout. |
-| **Orders & data** | Postgres schema with `orders` / `order_items`, money stored in **cents**, RLS so customers only see their orders; `finalize_order()` RPC for atomic inventory + order writes. |
-| **Auth & cart** | Supabase Auth (email/password + Google); cart in DB when signed in, `localStorage` for guests, merge on sign-in; sold-item pruning so users cannot checkout stale inventory. |
-| **Admin console** | Protected `/admin` dashboard: order fulfillment (status, carrier, tracking), product CRUD, multi-image gallery upload/reorder/rotate/crop, bulk “set primary image” from Storage. |
-| **SEO & growth** | Per-route meta tags (Open Graph, Twitter, Pinterest product Rich Pins), JSON-LD `Product` schema, dynamic + build-time sitemaps with image extensions, `robots.txt`, Google Search Console + Pinterest domain verification. |
-| **Automated feeds** | Build pipeline generates `sitemap.xml` and `pinterest-catalog.csv` from live inventory (Pinterest Catalogs URL ingestion, ~daily sync). |
-| **Business rules** | Promo codes, $0 “free item” checkout path with server-validated totals and rolling-window abuse limits (Postgres RPC). |
+| Layer | Tech |
+|-------|------|
+| Frontend | React 19, TypeScript, Vite, React Router |
+| API | Vercel serverless (`sleptonvintage-react/api/`) |
+| Data | Supabase (Postgres, Auth, Storage, RLS) |
+| Payments | Square Orders + Payments + Web Payments SDK |
+| Ops | Admin console, build-time sitemap + Pinterest CSV |
 
 ---
 
@@ -33,154 +24,78 @@ This repo is meant to show how I think as a software engineer: product ownership
 
 ```mermaid
 flowchart LR
-  subgraph client [Browser]
-    React[React SPA]
-    SquareSDK[Square Web Payments SDK]
-  end
-
-  subgraph vercel [Vercel]
-    API[Serverless API routes]
-    Static[Static assets + generated feeds]
-  end
-
-  subgraph backend [Supabase]
-    PG[(Postgres + RLS)]
-    Auth[Auth]
-    Storage[Storage buckets]
-  end
-
-  SquareAPI[Square Orders & Payments API]
-
-  React --> API
-  React --> SquareSDK
-  SquareSDK --> SquareAPI
-  API --> PG
-  API --> Auth
-  API --> Storage
-  API --> SquareAPI
-  React --> Auth
-  React --> PG
+  React[React SPA] --> API[Vercel API]
+  React --> Supabase[(Supabase)]
+  API --> Supabase
+  API --> Square[Square]
+  React --> Square
 ```
 
-**Request flow (paid checkout):**
+**Checkout:** Server creates a Square order → client tokenizes card → server captures payment → `finalize_order()` RPC writes the order and marks inventory sold (refund if stock races).
 
-1. Client loads cart and collects shipping info.
-2. `POST /api/orders/create` — server validates cart against Supabase, applies promo logic, creates a **Square order** (source of truth for tax/total).
-3. Square Web Payments **tokenizes** the card; `POST /api/payments/create` charges the Square order amount with an idempotency key tied to `orderId`.
-4. Server calls `finalize_order()` to persist the order, snapshot line items, and mark products sold — with refund if inventory was lost in a race.
+**Free orders:** Same validation path via `finalize-free`; promo + rolling-window limits in Postgres.
 
-Free checkouts skip Square and use `POST /api/orders/finalize-free` with the same server-side total validation.
+**Admin:** One `api/admin` handler (Hobby function limit); JWT + `ADMIN_EMAILS` allowlist; service role only on the server.
 
 ---
 
-## Tech stack
+## Features
 
-| Layer | Technologies |
-|-------|----------------|
-| Frontend | React 19, TypeScript, Vite, React Router |
-| Backend | Vercel serverless functions (`api/*`) |
-| Database | Supabase (PostgreSQL), Row Level Security, SQL migrations in repo root |
-| Auth | Supabase Auth (JWT), email allowlist for admin |
-| Payments | Square Orders API + Payments API + Web Payments SDK |
-| Media | Supabase Storage (product galleries, homepage video) |
-| Analytics | Vercel Analytics |
-| Tooling | Prisma (schema introspection), ESLint, PowerShell ops scripts |
+- **Storefront** — Categories, search, galleries, cart (guest `localStorage` + DB merge on sign-in), Google sign-in.
+- **Orders** — Cents in DB, RLS per user, fulfillment fields in admin.
+- **Admin** — Products (upload, reorder, crop, rotate), orders (status, tracking), bulk primary-image backfill.
+- **Giveaways** — `/giveaway`: timed wheel draw, Google entry, public countdown, live resolve at `ends_at` (no reload), 7s reveal spin + confetti, 24h replay window. Winner gets a $0 order + shipping modal **after** the spin. One active giveaway at a time; listing hidden from catalog while running.
+- **SEO** — `Seo` component, JSON-LD, dynamic/build sitemaps, Pinterest catalog CSV, Rich Pins.
 
 ---
 
-## Admin & developer console
+## Giveaways (technical)
 
-I built an internal admin area so I do not need the Supabase dashboard for daily shop work:
-
-- **`/admin`** — Order table: fulfillment status, USPS tracking, buyer/shipping snapshot, promo codes, Square IDs; edit/delete with guardrails (delete does not auto-refund in Square).
-- **`/admin/products`** — Inventory list and navigation to create/edit listings.
-- **`/admin/products/new`** & **`/admin/products/:id`** — Listing editor with multi-image upload, gallery reorder, in-browser crop/rotate, and thumbnail sync to `products.image`.
-
-Admin routes call a **single consolidated** `api/admin` handler (designed around Vercel Hobby serverless limits) with JWT verification against `ADMIN_EMAILS` and service-role Supabase access on the server only.
-
-One-click **“Set primary images”** backfills `products.image` from the first file in each product’s Storage folder — useful after bulk uploads or migrations.
-
----
-
-## SEO & automated discovery
-
-- **`Seo` component** — Runtime updates to `title`, description, canonical URL, `robots`, Open Graph, Twitter Card, and Pinterest `product:*` tags on product pages.
-- **`productSeo.ts`** — Listing-aware titles/descriptions/alt text (vintage keywords, category, size) plus **Schema.org `Product` JSON-LD**.
-- **Sitemaps** — Generated at build time (`scripts/generate-sitemap.mjs`) and served dynamically at `/sitemap.xml` (`api/sitemap.ts`) with Google image sitemap entries.
-- **Pinterest** — `scripts/generate-pinterest-catalog.mjs` → `/pinterest-catalog.csv` for catalog URL ingestion; Rich Pins via OG product metadata.
-- **`public/robots.txt`** — Allows crawling of catalog pages; blocks `/admin`, `/checkout`, `/cart`, `/orders`, `/auth/`.
+| Piece | Detail |
+|-------|--------|
+| **SQL** | `giveaways`, `giveaway_entries`, `products_public` view, `active_giveaway_public` view, `resolve_giveaway()` RPC |
+| **Resolve** | Random entrant in Postgres after `ends_at`; marks product sold; real winner → `orders` status `giveaway` |
+| **Test entrants** | `is_test` rows (no auth user); admin seed on create (up to 90); test winners skip shippable order |
+| **Wheel** | `spin-wheel` canvas; idle spin until end; font scales with entrant count |
+| **Admin** | Create/cancel on product edit; on `/giveaway`: remove entrant, cancel giveaway (pre-resolve) |
+| **Migrations** | Run in order: `supabase-giveaways.sql` → `supabase-giveaway-winner-shipping.sql` → `supabase-giveaway-test-entries.sql` → `supabase-giveaway-replay-view-fix.sql` (keeps resolved giveaways visible 24h for replay) |
 
 ---
 
-## Repository layout
+## Repo layout
 
 ```
 sleptonvintage.com/
-├── sleptonvintage-react/     # Production app (React + Vite + Vercel API)
-│   ├── src/                  # Pages, components, contexts, services
-│   ├── api/                  # orders, payments, admin, sitemap
-│   ├── server/               # Shared server helpers (Square, admin auth, images)
-│   ├── scripts/              # Sitemap + Pinterest catalog generators (run on build)
-│   └── public/               # robots.txt, static assets, generated feeds
-├── sleptonvintage-vanilla/   # Early static HTML/CSS prototype (archived reference)
-├── supabase-*.sql            # Schema, orders, RLS, migrations (run in SQL Editor)
-├── scripts/                  # Supabase restore / schema extract utilities
-└── RUNBOOK.md                # Deploy, env vars, and common commands
+├── sleptonvintage-react/   # Production app (src, api, server, scripts)
+├── sleptonvintage-vanilla/ # Static prototype (reference)
+├── supabase-*.sql          # Schema migrations (Supabase SQL Editor)
+├── scripts/                # Restore / schema utilities
+└── RUNBOOK.md              # Env vars, deploy, commands
 ```
 
 ---
 
-## Local development
-
-From the repo root (see **[RUNBOOK.md](./RUNBOOK.md)** for full commands):
+## Develop & deploy
 
 ```powershell
-# Frontend only
 cd sleptonvintage-react
 npm install
-npm run dev
+npm run dev          # UI only
 
-# Frontend + API routes (Square checkout testing)
 cd ..
-vercel dev
-```
+vercel dev           # UI + /api (checkout, admin, giveaways)
 
-**Build** (matches production — TypeScript compile, sitemap, Pinterest CSV, Vite bundle):
-
-```powershell
 cd sleptonvintage-react
-npm run build
+npm run build        # tsc + sitemap + Pinterest CSV + Vite
+vercel --prod        # from repo root; Vercel root dir = sleptonvintage-react
 ```
 
-Environment variables are configured in Vercel (Supabase, Square, admin allowlist). Do not commit secrets.
+Secrets live in Vercel only — see **RUNBOOK.md**.
 
----
-
-## Database & migrations
-
-SQL in the repo root documents the evolving schema:
-
-- `supabase-manual-schema.sql` — Core `products` + storage setup
-- `supabase-orders.sql` — Orders, line items, `finalize_order()`, RLS policies
-- `supabase-free-item-limit.sql` — Rate limit RPC for $0 checkouts
-- Additional migrations for cents-based pricing, primary images, storage prefixes, etc.
-
-Restore/ops scripts live under `scripts/` (see RUNBOOK).
-
----
-
-## Deployment
-
-Production deploys from the repo root with Vercel’s root directory set to `sleptonvintage-react`:
-
-```powershell
-vercel --prod
-```
+**Core SQL (non-giveaway):** `supabase-manual-schema.sql`, `supabase-orders.sql`, `supabase-free-item-limit.sql`, plus price-cents / storage-prefix / primary-image migrations as needed.
 
 ---
 
 ## Contact
 
-Business site: [sleptonvintage.com](https://sleptonvintage.com) · Contact page on the site for customer inquiries.
-
-For engineering questions about this codebase, open an issue or reach out via the contact info on your GitHub profile / resume.
+Shop: [sleptonvintage.com](https://sleptonvintage.com). Code questions: GitHub issues or profile on resume.

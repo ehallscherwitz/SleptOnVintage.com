@@ -11,6 +11,7 @@ import { adminService } from '../services/adminService';
 import { isAdminEmail } from '../utils/adminAccess';
 import { confettiBurst } from '../utils/confetti';
 import { clearGiveawayRevealSeen, markGiveawayRevealSeen } from '../utils/giveawayReveal';
+import { unlockGiveawayAudio } from '../utils/giveawaySounds';
 
 function nowMs(): number {
   return Date.now();
@@ -103,6 +104,16 @@ const GiveawayPage: React.FC = () => {
     if (user?.id) setEntered(e.some((x) => x.user_id === user.id));
     else setEntered(false);
   }
+
+  useEffect(() => {
+    const unlock = () => unlockGiveawayAudio();
+    window.addEventListener('pointerdown', unlock, { once: true });
+    window.addEventListener('keydown', unlock, { once: true });
+    return () => {
+      window.removeEventListener('pointerdown', unlock);
+      window.removeEventListener('keydown', unlock);
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;

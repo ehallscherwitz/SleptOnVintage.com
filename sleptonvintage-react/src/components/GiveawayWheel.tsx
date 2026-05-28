@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { Wheel } from 'spin-wheel';
+import { startWheelSpinSound, stopWheelSpinSound } from '../utils/giveawaySounds';
 
 export type GiveawayWheelSegment = {
   id: string;
@@ -134,6 +135,7 @@ export const GiveawayWheel: React.FC<Props> = ({ segments, selectedId, idle = fa
 
     return () => {
       ro?.disconnect();
+      stopWheelSpinSound();
       try {
         wheel.stop();
         wheelRef.current?.remove();
@@ -151,16 +153,19 @@ export const GiveawayWheel: React.FC<Props> = ({ segments, selectedId, idle = fa
 
     if (spin) {
       wheel.stop();
+      stopWheelSpinSound();
       return;
     }
 
     if (idle && items.length > 0) {
       wheel.rotationResistance = 0;
       wheel.spin(IDLE_SPIN_SPEED);
-      return;
+      startWheelSpinSound('idle');
+      return () => stopWheelSpinSound();
     }
 
     wheel.stop();
+    stopWheelSpinSound();
   }, [idle, spin, items.length, segmentKey]);
 
   useEffect(() => {
@@ -181,15 +186,19 @@ export const GiveawayWheel: React.FC<Props> = ({ segments, selectedId, idle = fa
 
     spinStartedRef.current = true;
     wheel.stop();
+    startWheelSpinSound('reveal');
 
     const handleRest = () => {
       wheel.onRest = null;
+      stopWheelSpinSound();
       onSpinEnd?.();
     };
     wheel.onRest = handleRest;
 
     // Same duration + revolutions for every visitor → same visual “show”.
     wheel.spinToItem(idx, 7000, true, 6, 1);
+
+    return () => stopWheelSpinSound();
   }, [spin, selectedId, items, onSpinEnd]);
 
   return (
