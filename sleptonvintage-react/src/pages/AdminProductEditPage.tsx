@@ -52,6 +52,7 @@ const AdminProductEditPage: React.FC = () => {
   const [orderDirty, setOrderDirty] = useState(false);
   const [imageCacheBust, setImageCacheBust] = useState<Record<string, number>>({});
   const [cropSession, setCropSession] = useState<CropSession | null>(null);
+  const [giveawayDuration, setGiveawayDuration] = useState(24 * 60 * 60);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -389,6 +390,25 @@ const AdminProductEditPage: React.FC = () => {
     }
   };
 
+  const createGiveaway = async () => {
+    if (!Number.isFinite(productId)) return;
+    setSaving(true);
+    setMsg(null);
+    setErr(null);
+    try {
+      const { error: e } = await adminService.createGiveaway({
+        productId,
+        durationSeconds: giveawayDuration,
+      });
+      if (e) setErr(e);
+      else setMsg('Giveaway created. View it at /giveaway.');
+    } catch (ex) {
+      setErr(ex instanceof Error ? ex.message : 'Create giveaway failed');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const moveInGallery = (from: number, to: number) => {
     if (from === to || from < 0 || to < 0 || from >= files.length || to >= files.length) return;
     const next = [...files];
@@ -531,6 +551,40 @@ const AdminProductEditPage: React.FC = () => {
               {saving ? 'Saving…' : 'Save details'}
             </button>
           </form>
+        </section>
+
+        <section className="admin-product-section">
+          <h2 className="admin-product-section-title">Giveaway</h2>
+          <p className="admin-hint">
+            Creates a timed giveaway for this listing and hides it from category pages until the giveaway resolves.
+            After the timer ends, the wheel will spin publicly and the winner will automatically receive a $0 order.
+          </p>
+          <div className="admin-product-upload-row" style={{ alignItems: 'center' }}>
+            <label className="admin-label" style={{ margin: 0 }}>
+              Duration
+            </label>
+            <select
+              className="checkout-input"
+              value={giveawayDuration}
+              disabled={saving}
+              onChange={(e) => setGiveawayDuration(parseInt(e.target.value, 10))}
+              style={{ maxWidth: 240 }}
+            >
+              <option value={60 * 60}>1 hour</option>
+              <option value={3 * 60 * 60}>3 hours</option>
+              <option value={6 * 60 * 60}>6 hours</option>
+              <option value={12 * 60 * 60}>12 hours</option>
+              <option value={24 * 60 * 60}>24 hours</option>
+              <option value={3 * 24 * 60 * 60}>3 days</option>
+              <option value={7 * 24 * 60 * 60}>1 week</option>
+            </select>
+            <button type="button" className="checkout-btn-primary" disabled={saving} onClick={() => void createGiveaway()}>
+              {saving ? 'Creating…' : 'Create giveaway'}
+            </button>
+            <Link to="/giveaway" className="admin-btn-secondary" style={{ textDecoration: 'none' }}>
+              Open giveaway page
+            </Link>
+          </div>
         </section>
 
         <section className="admin-product-section">

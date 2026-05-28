@@ -303,4 +303,22 @@ export const adminService = {
       return { error: networkErrorHint(e) || 'Request failed' };
     }
   },
+
+  async createGiveaway(body: {
+    productId: number;
+    durationSeconds: number;
+  }): Promise<{ giveaway?: unknown; error?: string }> {
+    try {
+      const response = await fetch(ADMIN_API, {
+        method: 'POST',
+        headers: await authHeaders(),
+        body: JSON.stringify({ op: 'create-giveaway', ...body }),
+      });
+      const data = await parseJson(response);
+      if (!response.ok) return { error: data?.error || `HTTP ${response.status}` };
+      return { giveaway: data.giveaway };
+    } catch (e) {
+      return { error: networkErrorHint(e) || 'Create giveaway failed' };
+    }
+  },
 };

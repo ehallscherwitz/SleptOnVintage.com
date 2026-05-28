@@ -635,6 +635,64 @@ async function handleSyncPinterestCatalog(_req: VercelRequest, res: VercelRespon
   });
 }
 
+function asDurationSeconds(v: unknown): number | undefined {
+  const n = asInt(v);
+  if (n === undefined) return undefined;
+  return n;
+}
+
+async function handleCreateGiveaway(req: VercelRequest, res: VercelResponse, auth: AdminOk) {
+  const body = parseBody(req);
+  const idRaw = body.productId;
+  const productId = typeof idRaw === 'number' ? idRaw : typeof idRaw === 'string' ? parseInt(idRaw, 10) : NaN;
+  if (!Number.isFinite(productId)) return res.status(400).json({ error: 'productId required' });
+
+  const durationSeconds = asDurationSeconds(body.durationSeconds);
+  if (!durationSeconds) return res.status(400).json({ error: 'durationSeconds required (integer seconds)' });
+
+  const MIN = 60 * 60; // 1 hour
+  const MAX = 60 * 60 * 24 * 7; // 1 week
+  if (durationSeconds < MIN || durationSeconds > MAX) {
+    return res.status(400).json({ error: 'durationSeconds must be between 3600 (1h) and 604800 (1w)' });
+  }
+
+  const { data: product, error: prodErr } = await auth.service
+    .from('products')
+    .select('id, available')
+    .eq('id', productId)
+    .maybeSingle();
+  if (prodErr) return res.status(500).json({ error: prodErr.message });
+  if (!product) return res.status(404).json({ error: 'Product not found' });
+  if (!(product as { available?: boolean }).available) {
+    return res.status(409).json({ error: 'Product must be available to create a giveaway.' });
+  }
+
+  // Enforce one active giveaway at a time (site UX assumes a single "Giveaway" page).
+  const { count: activeCount, error: activeErr } = await auth.service
+    .from('giveaways')
+    .select('*', { count: 'exact', head: true })
+    .is('resolved_at', null)
+    .gt('ends_at', new Date().toISOString());
+  if (activeErr) return res.status(500).json({ error: activeErr.message });
+  if ((activeCount ?? 0) > 0) {
+    return res.status(409).json({ error: 'There is already an active giveaway. Resolve it before creating another.' });
+  }
+
+  const endsAt = new Date(Date.now() + durationSeconds * 1000).toISOString();
+  const { data, error } = await auth.service
+    .from('giveaways')
+    .insert({
+      product_id: productId,
+      starts_at: new Date().toISOString(),
+      ends_at: endsAt,
+    })
+    .select('*')
+    .maybeSingle();
+
+  if (error) return res.status(500).json({ error: error.message });
+  return res.status(201).json({ giveaway: data });
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
@@ -682,6 +740,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return handleSetPrimaryImages(req, res, auth);
     case 'sync-pinterest-catalog':
       return handleSyncPinterestCatalog(req, res, auth);
+    case 'create-giveaway':
+      return handleCreateGiveaway(req, res, auth);
     default:
       return res.status(400).json({ error: 'Missing or unknown op in JSON body' });
   }
