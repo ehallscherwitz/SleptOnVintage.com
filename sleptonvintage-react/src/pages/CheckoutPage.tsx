@@ -361,7 +361,7 @@ export const CheckoutPage: React.FC = () => {
     const promo = getPromoResult(code);
     if (promo.applied && promo.code) {
       setAppliedPromoCode(promo.code);
-      setPromoMessage(`Promo applied: ${promo.code} (10% off).`);
+      setPromoMessage(`Promo applied: ${promo.code} (${Math.round(promo.discountRate * 100)}% off).`);
       setPendingSquareOrder(null);
     } else {
       setAppliedPromoCode(null);

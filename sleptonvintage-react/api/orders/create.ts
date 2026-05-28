@@ -1,6 +1,7 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { SquareClient, SquareEnvironment } from 'square';
 import { createClient } from '@supabase/supabase-js';
+import { getPromoDiscountRate } from '../../server/promoCodes.js';
 
 function getSquareEnvironment() {
   const env = (process.env.SQUARE_ENV || '').toLowerCase();
@@ -68,27 +69,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    const normalizedPromo = String(promoCode || '').trim().toUpperCase();
-    const tenOffCodes = new Set([
-      'SOV',
-      'EMEKA',
-      'PRABHAS',
-      'NOOR',
-      'DIEGO',
-      'GINA',
-      'ISHANI',
-      'SAUMYA',
-      'RYAN',
-      'JULIAN',
-      'EISA',
-      'JACOB',
-      'SCOT',
-      'YOGURT',
-      'UTD',
-      'PEDXING',
-    ]);
-    const promoApplied = tenOffCodes.has(normalizedPromo);
-    const promoRate = promoApplied ? 0.1 : 0;
+    const promo = getPromoDiscountRate(promoCode);
+    const promoApplied = Boolean(promo);
+    const promoRate = promo?.rate ?? 0;
+    const normalizedPromo = promo?.code ?? '';
 
     const productIds = [...new Set(cartItems.map((ci: any) => ci?.product_id).filter((id: any) => Number.isFinite(id)))];
     if (productIds.length !== cartItems.length) {

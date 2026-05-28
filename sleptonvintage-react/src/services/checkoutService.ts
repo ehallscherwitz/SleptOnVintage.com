@@ -56,10 +56,13 @@ const TEN_OFF_PROMO_CODES = new Set([
   'EISA',
   'JACOB',
   'SCOT',
-  'YOGURT',
   'UTD',
   'PEDXING',
 ]);
+
+const PROMO_RATE_BY_CODE: Record<string, number> = {
+  YOGURT: 0.15,
+};
 
 /** Postgres bigint / JSON often arrives as number or string; keep checkout math numeric. */
 function priceCents(value: unknown): number {
@@ -70,6 +73,9 @@ function priceCents(value: unknown): number {
 
 function evaluatePromo(code?: string | null): PromoResult {
   const normalized = normalizePromoCode(code);
+  if (Object.prototype.hasOwnProperty.call(PROMO_RATE_BY_CODE, normalized)) {
+    return { applied: true, code: normalized, discountRate: PROMO_RATE_BY_CODE[normalized]! };
+  }
   if (TEN_OFF_PROMO_CODES.has(normalized)) {
     return { applied: true, code: normalized, discountRate: 0.1 };
   }

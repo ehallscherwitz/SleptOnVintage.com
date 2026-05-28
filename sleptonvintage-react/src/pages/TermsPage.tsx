@@ -235,6 +235,19 @@ const TermsPage: React.FC = () => {
         per giveaway. Using multiple accounts or identities to obtain additional entries may result in disqualification
         from the current giveaway and future giveaways, at our discretion.
       </p>
+      <p>
+        <strong>Giveaway page audio:</strong> The giveaway page may play background music and sound effects.{' '}
+        <em>Monkeys Spinning Monkeys</em> by Kevin MacLeod is used as background music on that page and is licensed
+        under{' '}
+        <a href="https://creativecommons.org/licenses/by/4.0/" rel="noopener noreferrer" target="_blank">
+          Creative Commons Attribution 4.0
+        </a>
+        . Wheel spin sound effects are from{' '}
+        <a href="https://mixkit.co/" rel="noopener noreferrer" target="_blank">
+          Mixkit
+        </a>{' '}
+        (Mixkit License). The winner celebration fanfare is generated in the browser and is not a third-party recording.
+      </p>
 
       <h2>Section 11 — Errors, inaccuracies, and omissions</h2>
       <p>

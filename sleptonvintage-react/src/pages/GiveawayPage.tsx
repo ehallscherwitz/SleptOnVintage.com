@@ -11,7 +11,7 @@ import { adminService } from '../services/adminService';
 import { isAdminEmail } from '../utils/adminAccess';
 import { confettiBurst } from '../utils/confetti';
 import { clearGiveawayRevealSeen, markGiveawayRevealSeen } from '../utils/giveawayReveal';
-import { unlockGiveawayAudio } from '../utils/giveawaySounds';
+import { startGiveawayAmbience, stopGiveawayAmbience, unlockGiveawayAudio } from '../utils/giveawaySounds';
 
 function nowMs(): number {
   return Date.now();
@@ -114,6 +114,15 @@ const GiveawayPage: React.FC = () => {
       window.removeEventListener('keydown', unlock);
     };
   }, []);
+
+  useEffect(() => {
+    if (loading || !giveaway) {
+      stopGiveawayAmbience();
+      return;
+    }
+    startGiveawayAmbience();
+    return () => stopGiveawayAmbience();
+  }, [loading, giveaway?.id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -364,10 +373,18 @@ const GiveawayPage: React.FC = () => {
                 )}
 
                 {showWinnerAnnouncement && (
-                  <div className="giveaway-winner">
-                    <div className="giveaway-winner-label">Winner</div>
-                    <div className="giveaway-winner-name">{winnerName || 'No entries'}</div>
-                  </div>
+                  <>
+                    <div className="giveaway-winner">
+                      <div className="giveaway-winner-label">Winner</div>
+                      <div className="giveaway-winner-name">{winnerName || 'No entries'}</div>
+                    </div>
+                    <div className="giveaway-participant-promo">
+                      <div className="giveaway-participant-promo-label">For all participants</div>
+                      <p className="giveaway-participant-promo-text">
+                        Use code <strong className="giveaway-promo-code">YOGURT</strong> for 15% sitewide!
+                      </p>
+                    </div>
+                  </>
                 )}
               </div>
 

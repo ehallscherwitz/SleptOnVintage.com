@@ -102,6 +102,34 @@
   font-weight: 700;
 }
 
+.giveaway-participant-promo {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 209, 102, 0.35);
+  background: rgba(255, 209, 102, 0.08);
+}
+
+.giveaway-participant-promo-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(255, 209, 102, 0.9);
+  font-weight: 600;
+}
+
+.giveaway-participant-promo-text {
+  margin: 8px 0 0;
+  font-size: 16px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.giveaway-promo-code {
+  font-size: 17px;
+  letter-spacing: 0.06em;
+}
+
 .giveaway-item-image {
   width: min(360px, 100%);
   aspect-ratio: 1 / 1;

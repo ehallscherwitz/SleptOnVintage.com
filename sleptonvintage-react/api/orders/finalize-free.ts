@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { schedulePinterestSyncProductIds } from '../../server/pinterestSync.js';
+import { getPromoDiscountRate } from '../../server/promoCodes.js';
 
 function parseBody(req: VercelRequest): Record<string, unknown> {
   try {
@@ -11,25 +12,6 @@ function parseBody(req: VercelRequest): Record<string, unknown> {
   }
   return {};
 }
-
-const TEN_OFF_CODES = new Set([
-  'SOV',
-  'EMEKA',
-  'PRABHAS',
-  'NOOR',
-  'DIEGO',
-  'GINA',
-  'ISHANI',
-  'SAUMYA',
-  'RYAN',
-  'JULIAN',
-  'EISA',
-  'JACOB',
-  'SCOT',
-  'YOGURT',
-  'UTD',
-  'PEDXING',
-]);
 
 const TAX_RATE = 0.085;
 
@@ -81,11 +63,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    const normalizedPromo = String(promoCode || '')
-      .trim()
-      .toUpperCase();
-    const promoApplied = TEN_OFF_CODES.has(normalizedPromo);
-    const promoRate = promoApplied ? 0.1 : 0;
+    const promo = getPromoDiscountRate(promoCode);
+    const promoApplied = Boolean(promo);
+    const promoRate = promo?.rate ?? 0;
+    const normalizedPromo = promo?.code ?? '';
 
     const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: `Bearer ${jwt}` } },

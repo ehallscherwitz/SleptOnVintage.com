@@ -1,7 +1,18 @@
-/** Web Audio SFX for the giveaway wheel (no external assets). */
+/** Giveaway page audio: ambience + wheel spin (files in /public/audio), win fanfare (Web Audio). */
+
+const AMBIENCE_SRC = '/audio/Monkeys%20Spinning%20Monkeys.mp3';
+const WHEEL_SPIN_SRC = '/audio/mixkit-bike-wheel-spinning-1613.wav';
+
+const AMBIENCE_VOLUME = 0.32;
+const AMBIENCE_DUCKED_VOLUME = 0.1;
+const WHEEL_IDLE_VOLUME = 0.55;
+const WHEEL_REVEAL_VOLUME = 0.75;
 
 let sharedCtx: AudioContext | null = null;
+let ambienceAudio: HTMLAudioElement | null = null;
+let wheelSpinAudio: HTMLAudioElement | null = null;
 let spinSession: { stop: () => void } | null = null;
+let audioUnlocked = false;
 
 function getCtx(): AudioContext | null {
   if (typeof window === 'undefined') return null;
@@ -16,82 +27,79 @@ function getCtx(): AudioContext | null {
   }
 }
 
-/** Call once after user gesture so timer-end spin can play audio. */
+function makeAudio(src: string, loop: boolean): HTMLAudioElement {
+  const audio = new Audio(src);
+  audio.loop = loop;
+  audio.preload = 'auto';
+  return audio;
+}
+
+async function primeElement(audio: HTMLAudioElement): Promise<void> {
+  const prev = audio.volume;
+  audio.volume = 0;
+  try {
+    await audio.play();
+    audio.pause();
+    audio.currentTime = 0;
+  } catch {
+    /* gesture required */
+  }
+  audio.volume = prev;
+}
+
+/** Call after user gesture so timer-end spin and ambience can play. */
 export function unlockGiveawayAudio(): void {
-  const ctx = getCtx();
-  if (!ctx) return;
-  if (ctx.state === 'suspended') void ctx.resume();
+  getCtx();
+  if (audioUnlocked) return;
+  audioUnlocked = true;
+  void primeElement(makeAudio(AMBIENCE_SRC, true));
+  void primeElement(makeAudio(WHEEL_SPIN_SRC, true));
 }
 
-function createNoiseBuffer(ctx: AudioContext, seconds = 2): AudioBuffer {
-  const length = Math.floor(ctx.sampleRate * seconds);
-  const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
-  const data = buffer.getChannelData(0);
-  for (let i = 0; i < length; i++) data[i] = Math.random() * 2 - 1;
-  return buffer;
+/** Background loop on the giveaway page (/giveaway). */
+export function startGiveawayAmbience(): void {
+  stopGiveawayAmbience();
+  ambienceAudio = makeAudio(AMBIENCE_SRC, true);
+  ambienceAudio.volume = AMBIENCE_VOLUME;
+  void ambienceAudio.play().catch(() => {
+    /* blocked until unlock */
+  });
 }
 
-function playTick(ctx: AudioContext, volume = 0.12): void {
-  const t = ctx.currentTime;
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.type = 'square';
-  osc.frequency.setValueAtTime(280, t);
-  osc.frequency.exponentialRampToValueAtTime(90, t + 0.04);
-  gain.gain.setValueAtTime(volume, t);
-  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
-  osc.connect(gain);
-  gain.connect(ctx.destination);
-  osc.start(t);
-  osc.stop(t + 0.06);
+export function stopGiveawayAmbience(): void {
+  if (!ambienceAudio) return;
+  ambienceAudio.pause();
+  ambienceAudio.currentTime = 0;
+  ambienceAudio = null;
 }
 
-/** Looping whoosh + optional ticks while the wheel spins. */
+function duckAmbience(): void {
+  if (ambienceAudio) ambienceAudio.volume = AMBIENCE_DUCKED_VOLUME;
+}
+
+function restoreAmbienceVolume(): void {
+  if (ambienceAudio) ambienceAudio.volume = AMBIENCE_VOLUME;
+}
+
+/** Bike-wheel SFX while the canvas wheel is spinning (idle or reveal). */
 export function startWheelSpinSound(mode: 'idle' | 'reveal'): void {
   stopWheelSpinSound();
-  const ctx = getCtx();
-  if (!ctx) return;
+  duckAmbience();
 
-  const source = ctx.createBufferSource();
-  source.buffer = createNoiseBuffer(ctx);
-  source.loop = true;
-
-  const filter = ctx.createBiquadFilter();
-  filter.type = 'bandpass';
-  filter.frequency.value = mode === 'idle' ? 700 : 1400;
-  filter.Q.value = 0.7;
-
-  const gain = ctx.createGain();
-  gain.gain.value = mode === 'idle' ? 0.06 : 0.14;
-
-  source.connect(filter);
-  filter.connect(gain);
-  gain.connect(ctx.destination);
-  source.start();
-
-  let tickId: number | undefined;
-  if (mode === 'reveal') {
-    let interval = 140;
-    const scheduleTicks = () => {
-      playTick(ctx, 0.14);
-      interval = Math.min(320, interval + 8);
-      tickId = window.setTimeout(scheduleTicks, interval);
-    };
-    scheduleTicks();
-  }
+  wheelSpinAudio = makeAudio(WHEEL_SPIN_SRC, true);
+  wheelSpinAudio.volume = mode === 'idle' ? WHEEL_IDLE_VOLUME : WHEEL_REVEAL_VOLUME;
+  void wheelSpinAudio.play().catch(() => {
+    /* blocked until unlock */
+  });
 
   spinSession = {
     stop: () => {
-      if (tickId !== undefined) window.clearTimeout(tickId);
-      const end = ctx.currentTime + 0.12;
-      gain.gain.cancelScheduledValues(ctx.currentTime);
-      gain.gain.setValueAtTime(gain.gain.value, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, end);
-      try {
-        source.stop(end);
-      } catch {
-        /* already stopped */
+      if (wheelSpinAudio) {
+        wheelSpinAudio.pause();
+        wheelSpinAudio.currentTime = 0;
+        wheelSpinAudio = null;
       }
+      restoreAmbienceVolume();
       spinSession = null;
     },
   };
@@ -102,13 +110,13 @@ export function stopWheelSpinSound(): void {
   spinSession = null;
 }
 
-/** Short brass-style fanfare when confetti runs. */
+/** Short brass-style fanfare when confetti runs (synthesized). */
 export function playWinTrumpet(): void {
   const ctx = getCtx();
   if (!ctx) return;
 
   const t = ctx.currentTime;
-  const notes = [392, 523.25, 659.25, 784]; // G4 C5 E5 G5
+  const notes = [392, 523.25, 659.25, 784];
 
   notes.forEach((freq, i) => {
     const start = t + i * 0.14;
