@@ -17,6 +17,7 @@ let wheelGain: GainNode | null = null;
 let audioUnlocked = false;
 let wantWaitingMusic = false;
 let wheelRevealActive = false;
+let revealSpinPending = false;
 let revealFinished = false;
 let lastGiveawayId: string | null = null;
 
@@ -131,9 +132,14 @@ export function resetGiveawayAudioForGiveaway(giveawayId: string): void {
 function playWhenReady(audio: HTMLAudioElement): void {
   const tryPlay = () => {
     if (!audio.paused) return;
-    void audio.play().catch(() => {
-      /* blocked until unlock */
-    });
+    void audio
+      .play()
+      .then(() => {
+        audioUnlocked = true;
+      })
+      .catch(() => {
+        /* blocked until unlock */
+      });
   };
 
   if (audio.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) {
@@ -159,7 +165,7 @@ function startWheelRevealPlayback(): void {
   playWhenReady(w);
 
   void loadWheelBuffer().then((buf) => {
-    if (!buf || !wheelRevealActive) return;
+    if (!buf || (!wheelRevealActive && !revealSpinPending)) return;
     if (startWheelWebAudio()) {
       w.pause();
     }
@@ -170,13 +176,15 @@ function retryActiveAudioSync(): void {
   resumeCtx();
   void loadWheelBuffer();
 
-  if (wantWaitingMusic && !revealFinished && !wheelRevealActive) {
+  const inReveal = wheelRevealActive || revealSpinPending;
+
+  if (wantWaitingMusic && !revealFinished && !inReveal) {
     const a = getAmbienceEl();
     a.volume = WAITING_MUSIC_VOLUME;
     playWhenReady(a);
   }
 
-  if (wheelRevealActive) {
+  if (inReveal) {
     startWheelRevealPlayback();
   }
 }
@@ -193,7 +201,7 @@ export function isGiveawayAudioUnlocked(): boolean {
 
 /** Waiting-room loop only (slow idle wheel, before reveal spin). */
 export function startGiveawayAmbience(): void {
-  if (revealFinished || wheelRevealActive) return;
+  if (revealFinished || wheelRevealActive || revealSpinPending) return;
   wantWaitingMusic = true;
   const a = getAmbienceEl();
   a.volume = WAITING_MUSIC_VOLUME;
@@ -206,9 +214,17 @@ export function stopGiveawayAmbience(): void {
   if (ambienceEl) ambienceEl.currentTime = 0;
 }
 
+/** Stop waiting music as soon as a reveal spin is queued (before the wheel may be ready). */
+export function armRevealSpinAudio(): void {
+  revealSpinPending = true;
+  wantWaitingMusic = false;
+  stopGiveawayAmbience();
+}
+
 /** Bike-wheel SFX during the winner reveal spin (music must be off). */
 export function startWheelSpinSound(): void {
   wheelRevealActive = true;
+  revealSpinPending = true;
   wantWaitingMusic = false;
   stopGiveawayAmbience();
 
@@ -216,14 +232,13 @@ export function startWheelSpinSound(): void {
   if (wheelEl) wheelEl.currentTime = 0;
   stopWheelWebAudio();
 
-  if (audioUnlocked) {
-    startWheelRevealPlayback();
-  }
+  startWheelRevealPlayback();
 }
 
 /** End reveal spin; optional trumpet exactly when the wheel stops. */
 export function stopWheelSpinSound(playTrumpet = false): void {
   wheelRevealActive = false;
+  revealSpinPending = false;
   stopWheelWebAudio();
   wheelEl?.pause();
   if (wheelEl) wheelEl.currentTime = 0;

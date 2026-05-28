@@ -4,7 +4,6 @@ const TEN_PERCENT_CODES = new Set([
   'SOV',
   'EMEKA',
   'PRABHAS',
-  'NOOR',
   'DIEGO',
   'GINA',
   'ISHANI',
@@ -20,6 +19,7 @@ const TEN_PERCENT_CODES = new Set([
 
 const CUSTOM_RATES: Record<string, number> = {
   YOGURT: 0.15,
+  NOOR: 0.2,
 };
 
 export function normalizePromoCode(raw?: string | null): string {

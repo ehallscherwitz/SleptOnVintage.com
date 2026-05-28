@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { Wheel } from 'spin-wheel';
-import { startWheelSpinSound, stopWheelSpinSound } from '../utils/giveawaySounds';
+import { armRevealSpinAudio, startWheelSpinSound, stopWheelSpinSound } from '../utils/giveawaySounds';
 
 export type GiveawayWheelSegment = {
   id: string;
@@ -88,6 +88,10 @@ export const GiveawayWheel: React.FC<Props> = ({ segments, selectedId, idle = fa
   );
 
   useEffect(() => {
+    if (spin) armRevealSpinAudio();
+  }, [spin]);
+
+  useEffect(() => {
     const host = hostRef.current;
     if (!host || items.length === 0) return;
 
@@ -172,34 +176,46 @@ export const GiveawayWheel: React.FC<Props> = ({ segments, selectedId, idle = fa
 
   useEffect(() => {
     if (!spin || spinStartedRef.current) return;
-    const wheel = wheelRef.current;
-    if (!wheel) return;
+    if (!selectedId || items.length === 0) return;
 
-    if (!selectedId || items.length === 0) {
-      onSpinEndRef.current?.();
-      return;
-    }
+    let cancelled = false;
+    let rafId = 0;
 
-    const idx = items.findIndex((x) => x.id === selectedId);
-    if (idx < 0) {
-      onSpinEndRef.current?.();
-      return;
-    }
+    const tryStartReveal = () => {
+      if (cancelled || spinStartedRef.current) return;
 
-    spinStartedRef.current = true;
-    wheel.stop();
-    startWheelSpinSound();
+      const wheel = wheelRef.current;
+      if (!wheel) {
+        rafId = requestAnimationFrame(tryStartReveal);
+        return;
+      }
 
-    const handleRest = () => {
-      wheel.onRest = null;
-      stopWheelSpinSound(true);
-      onSpinEndRef.current?.();
+      const idx = items.findIndex((x) => x.id === selectedId);
+      if (idx < 0) {
+        rafId = requestAnimationFrame(tryStartReveal);
+        return;
+      }
+
+      spinStartedRef.current = true;
+      wheel.stop();
+      startWheelSpinSound();
+
+      const handleRest = () => {
+        wheel.onRest = null;
+        stopWheelSpinSound(true);
+        onSpinEndRef.current?.();
+      };
+      wheel.onRest = handleRest;
+
+      wheel.spinToItem(idx, 7000, true, 6, 1);
     };
-    wheel.onRest = handleRest;
 
-    // Same duration + revolutions for every visitor → same visual “show”.
-    wheel.spinToItem(idx, 7000, true, 6, 1);
-    // Audio stops only in handleRest — effect cleanup must not cut the bike SFX short.
+    tryStartReveal();
+
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(rafId);
+    };
   }, [spin, selectedId, segmentKey, items.length]);
 
   return (

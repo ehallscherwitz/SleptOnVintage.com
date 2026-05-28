@@ -46,7 +46,6 @@ const TEN_OFF_PROMO_CODES = new Set([
   'SOV',
   'EMEKA',
   'PRABHAS',
-  'NOOR',
   'DIEGO',
   'GINA',
   'ISHANI',
@@ -62,6 +61,7 @@ const TEN_OFF_PROMO_CODES = new Set([
 
 const PROMO_RATE_BY_CODE: Record<string, number> = {
   YOGURT: 0.15,
+  NOOR: 0.2,
 };
 
 /** Postgres bigint / JSON often arrives as number or string; keep checkout math numeric. */

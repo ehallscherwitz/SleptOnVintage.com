@@ -12,6 +12,7 @@ import { isAdminEmail } from '../utils/adminAccess';
 import { confettiBurst } from '../utils/confetti';
 import { clearGiveawayRevealSeen, markGiveawayRevealSeen } from '../utils/giveawayReveal';
 import {
+  armRevealSpinAudio,
   isGiveawayAudioUnlocked,
   preloadGiveawayAudio,
   resetGiveawayAudioForGiveaway,
@@ -48,8 +49,8 @@ const GiveawayPage: React.FC = () => {
   const [removingEntryId, setRemovingEntryId] = useState<string | null>(null);
 
   const [timeLeftMs, setTimeLeftMs] = useState<number>(0);
-  const [replaySpin, setReplaySpin] = useState(false);
-  const [replaySpinDone, setReplaySpinDone] = useState(false);
+  /** User has seen the reveal spin for this visit (or it finished). */
+  const [replayDismissed, setReplayDismissed] = useState(false);
   const [resolving, setResolving] = useState(false);
 
   const winnerId = useMemo(() => {
@@ -216,24 +217,31 @@ const GiveawayPage: React.FC = () => {
 
   const inReplayWindow = Boolean(giveaway?.resolved_at && !replayWindowOver);
 
+  /** Reveal spin runs on first paint when in replay window (no effect delay). */
+  const showRevealSpin = Boolean(
+    inReplayWindow && !replayDismissed && segments.length > 0 && winnerId
+  );
+
   useEffect(() => {
-    // Within 24h after end: replay the reveal spin on every visit (winner is already fixed in DB).
     if (!inReplayWindow) {
-      setReplaySpin(false);
-      setReplaySpinDone(false);
+      setReplayDismissed(false);
       return;
     }
     if (giveaway?.id) clearGiveawayRevealSeen(giveaway.id);
-    setReplaySpinDone(false);
-    setReplaySpin(true);
+    setReplayDismissed(false);
   }, [giveaway?.id, giveaway?.resolved_at, inReplayWindow]);
 
+  useEffect(() => {
+    if (showRevealSpin) armRevealSpinAudio();
+  }, [showRevealSpin]);
+
   const onSpinEnd = useCallback(() => {
-    setReplaySpin(false);
-    setReplaySpinDone(true);
+    setReplayDismissed(true);
     confettiBurst();
     if (giveaway?.id) markGiveawayRevealSeen(giveaway.id);
   }, [giveaway?.id]);
+
+  const replaySpinDone = replayDismissed;
 
   const showWinnerAnnouncement = Boolean(
     giveaway?.resolved_at && (replaySpinDone || segments.length === 0)
@@ -243,7 +251,7 @@ const GiveawayPage: React.FC = () => {
 
   /** Monkeys loop only while waiting — never during/after reveal spin. */
   const shouldPlayWaitingMusic = Boolean(
-    giveaway && wheelIdle && !replaySpin && !replaySpinDone && segments.length > 0
+    giveaway && wheelIdle && !showRevealSpin && !replayDismissed && segments.length > 0
   );
 
   useEffect(() => {
@@ -262,10 +270,6 @@ const GiveawayPage: React.FC = () => {
     }
     return () => stopGiveawayAmbience();
   }, [loading, giveaway?.id, shouldPlayWaitingMusic]);
-
-  useEffect(() => {
-    if (replaySpin) stopGiveawayAmbience();
-  }, [replaySpin]);
 
   const canEnter = useMemo(() => {
     if (!giveaway) return false;
@@ -315,8 +319,7 @@ const GiveawayPage: React.FC = () => {
         setErr(error);
         return;
       }
-      setReplaySpin(false);
-      setReplaySpinDone(false);
+      setReplayDismissed(false);
       await refresh();
     } catch (ex) {
       setErr(ex instanceof Error ? ex.message : 'Remove entrant failed');
@@ -338,8 +341,7 @@ const GiveawayPage: React.FC = () => {
         setErr(error);
         return;
       }
-      setReplaySpin(false);
-      setReplaySpinDone(false);
+      setReplayDismissed(false);
       await refresh();
     } catch (ex) {
       setErr(ex instanceof Error ? ex.message : 'Cancel giveaway failed');
@@ -469,7 +471,7 @@ const GiveawayPage: React.FC = () => {
                       {resolving ? 'Picking a winner…' : 'Get ready — the wheel will spin to reveal the winner.'}
                     </p>
                   )}
-                  {giveaway.resolved_at && replaySpin && !replaySpinDone && (
+                  {giveaway.resolved_at && showRevealSpin && (
                     <p className="giveaway-wheel-status" aria-live="polite">
                       Spinning to reveal the winner…
                     </p>
@@ -478,7 +480,7 @@ const GiveawayPage: React.FC = () => {
                     segments={segments}
                     selectedId={winnerId}
                     idle={wheelIdle}
-                    spin={replaySpin}
+                    spin={showRevealSpin}
                     onSpinEnd={onSpinEnd}
                   />
                 </>
