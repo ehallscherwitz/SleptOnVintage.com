@@ -227,6 +227,12 @@ const TermsPage: React.FC = () => {
         Your submission of personal information through the store is governed by our{' '}
         <Link to="/privacy">Privacy Policy</Link>.
       </p>
+      <p>
+        <strong>Giveaways:</strong> If you enter a giveaway, you understand and agree that your <strong>full name</strong>{' '}
+        will be displayed to other visitors on the giveaway wheel and related giveaway page for the duration of the
+        giveaway and for a limited time after it ends. By entering, you also agree we may email you future offers,
+        discounts, and promotional messages at the email address associated with your account.
+      </p>
 
       <h2>Section 11 — Errors, inaccuracies, and omissions</h2>
       <p>

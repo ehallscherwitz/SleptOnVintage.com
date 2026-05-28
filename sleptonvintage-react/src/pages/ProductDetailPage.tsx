@@ -5,6 +5,7 @@ import Header from '../components/Header';
 import { PageHeadingRow } from '../components/PageHeadingRow';
 import { useAuth } from '../context/AuthContext';
 import { getPrimaryProductImageUrl, productService, resolveProductImageUrls, type Product } from '../services/productService';
+import { giveawayService } from '../services/giveawayService';
 import { useCart } from '../context/CartContext';
 import { formatUsdFromCents } from '../utils/money';
 import { isAdminEmail } from '../utils/adminAccess';
@@ -42,7 +43,17 @@ const ProductDetailPage: React.FC = () => {
       try {
         setLoading(true);
         setError(null);
-        const productData = await productService.getProductById(parseInt(id));
+        const numericId = parseInt(id);
+        const [productData, giveawayRes] = await Promise.all([
+          productService.getProductById(numericId),
+          giveawayService.getActiveGiveawayPublic(),
+        ]);
+
+        // If this product is currently in the giveaway, redirect to the giveaway page.
+        if (giveawayRes.giveaway && giveawayRes.giveaway.product_id === numericId && Date.now() < new Date(giveawayRes.giveaway.ends_at).getTime()) {
+          navigate('/giveaway', { replace: true });
+          return;
+        }
 
         if (!productData) {
           setError('Product not found');

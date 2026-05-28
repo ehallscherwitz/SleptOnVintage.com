@@ -1,0 +1,2 @@
+declare module 'spin-wheel';
+

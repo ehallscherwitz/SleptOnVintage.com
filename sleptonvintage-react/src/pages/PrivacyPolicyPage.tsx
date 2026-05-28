@@ -24,6 +24,10 @@ const PrivacyPolicyPage: React.FC = () => {
         <li>Account: email and password, or Google sign-in (name and email).</li>
         <li>Orders: name, email, phone (optional), U.S. shipping address, order details, and promo codes.</li>
         <li>Payments: card data is entered on Square’s secure fields; we do not store full card numbers.</li>
+        <li>
+          Giveaways (if you enter): your full name and email, and your entry timestamp. Your full name will be displayed to
+          other visitors on the giveaway wheel.
+        </li>
         <li>Technical: basic site usage via our host/analytics (for example, Vercel Analytics).</li>
         <li>Messages you send us by email, phone, or Instagram.</li>
       </ul>
@@ -31,7 +35,8 @@ const PrivacyPolicyPage: React.FC = () => {
       <h2>How we use it</h2>
       <p>
         We use your information to run the store, fulfill and ship orders, process payments, provide support, prevent
-        fraud, and comply with law. We do not sell your personal information.
+        fraud, and comply with law. If you enter a giveaway, we may also use your email to send future offers, discounts,
+        and promotions. We do not sell your personal information.
       </p>
 
       <h2>Who we share with</h2>

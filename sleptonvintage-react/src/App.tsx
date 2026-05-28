@@ -18,6 +18,7 @@ import AdminOrdersPage from './pages/AdminOrdersPage';
 import AdminProductsPage from './pages/AdminProductsPage';
 import AdminProductEditPage from './pages/AdminProductEditPage';
 import AdminNewListingPage from './pages/AdminNewListingPage';
+import GiveawayPage from './pages/GiveawayPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import TermsPage from './pages/TermsPage';
 import ContactPage from './pages/ContactPage';
@@ -37,6 +38,7 @@ import './styles/checkout.css';
 import './styles/admin.css';
 import './styles/footer.css';
 import './styles/legal.css';
+import './styles/giveaway.css';
 
 function App() {
   return (
@@ -65,6 +67,7 @@ function App() {
                 <Route path="/admin/products" element={<AdminProductsPage />} />
                 <Route path="/admin/products/new" element={<AdminNewListingPage />} />
                 <Route path="/admin/products/:id" element={<AdminProductEditPage />} />
+                <Route path="/giveaway" element={<GiveawayPage />} />
                 <Route path="/auth/callback" element={<AuthCallback />} />
                 <Route path="/privacy" element={<PrivacyPolicyPage />} />
                 <Route path="/terms" element={<TermsPage />} />

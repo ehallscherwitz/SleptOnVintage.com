@@ -157,7 +157,7 @@ export const productService = {
   // Fetch all products
   async getAllProducts(): Promise<Product[]> {
     const { data, error } = await supabase
-      .from('products')
+      .from('products_public')
       .select('*')
       .order('available', { ascending: false })
       .order('id', { ascending: true })
@@ -173,7 +173,7 @@ export const productService = {
   // Fetch products by category
   async getProductsByCategory(category: Product['category']): Promise<Product[]> {
     const { data, error } = await supabase
-      .from('products')
+      .from('products_public')
       .select('*')
       .eq('category', category)
       .order('available', { ascending: false })
@@ -191,7 +191,7 @@ export const productService = {
   // Fetch available products only
   async getAvailableProducts(): Promise<Product[]> {
     const { data, error } = await supabase
-      .from('products')
+      .from('products_public')
       .select('*')
       .eq('available', true)
       .order('id', { ascending: true })
