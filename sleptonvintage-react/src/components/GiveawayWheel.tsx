@@ -7,6 +7,9 @@ export type GiveawayWheelSegment = {
 };
 
 /** Distinct slice colors (wheelofnames-style). */
+/** Degrees per second for slow continuous idle rotation. */
+const IDLE_SPIN_SPEED = 32;
+
 const SLICE_COLORS = [
   '#2563eb',
   '#dc2626',
@@ -47,9 +50,15 @@ export const GiveawayWheel: React.FC<Props> = ({ segments, selectedId, idle = fa
     }));
   }, [segments]);
 
+  /** Rebuild canvas only when entrant list/content changes — not on every poll refresh. */
+  const segmentKey = useMemo(
+    () => items.map((s) => `${s.id}\x1f${s.label}`).join('\x1e'),
+    [items],
+  );
+
   useEffect(() => {
     const host = hostRef.current;
-    if (!host) return;
+    if (!host || items.length === 0) return;
 
     host.innerHTML = '';
     spinStartedRef.current = false;
@@ -74,7 +83,7 @@ export const GiveawayWheel: React.FC<Props> = ({ segments, selectedId, idle = fa
       itemLabelColors: ['#ffffff'],
       itemLabelStrokeColor: '#000000',
       itemLabelStrokeWidth: 3,
-      rotationResistance: -35,
+      rotationResistance: 0,
       rotationSpeedMax: 400,
       isInteractive: false,
     });
@@ -90,7 +99,7 @@ export const GiveawayWheel: React.FC<Props> = ({ segments, selectedId, idle = fa
       wheelRef.current = null;
       host.innerHTML = '';
     };
-  }, [items]);
+  }, [segmentKey, items]);
 
   useEffect(() => {
     const wheel = wheelRef.current;
@@ -102,12 +111,13 @@ export const GiveawayWheel: React.FC<Props> = ({ segments, selectedId, idle = fa
     }
 
     if (idle && items.length > 0) {
-      wheel.spin(14);
+      wheel.rotationResistance = 0;
+      wheel.spin(IDLE_SPIN_SPEED);
       return;
     }
 
     wheel.stop();
-  }, [idle, spin, items.length]);
+  }, [idle, spin, items.length, segmentKey]);
 
   useEffect(() => {
     if (!spin || spinStartedRef.current) return;

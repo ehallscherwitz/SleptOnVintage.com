@@ -2,6 +2,7 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { consumeAuthReturnPath } from '../utils/authReturnPath';
 
 const AuthCallback: React.FC = () => {
   const navigate = useNavigate();
@@ -32,11 +33,10 @@ const AuthCallback: React.FC = () => {
           }
         }
 
-        // At this point, session should be stored if the callback was valid.
-        navigate('/');
+        navigate(consumeAuthReturnPath(), { replace: true });
       } catch (error) {
         console.error('Auth callback error:', error);
-        navigate('/');
+        navigate(consumeAuthReturnPath(), { replace: true });
       }
     };
 

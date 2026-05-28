@@ -1,5 +1,6 @@
 // Authentication Modal component
 import React, { useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 interface AuthModalProps {
@@ -11,12 +12,14 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { signInWithGoogle } = useAuth();
+  const location = useLocation();
 
   const handleGoogleSignIn = async () => {
     setLoading(true);
     setError(null);
-    
-    const { error } = await signInWithGoogle();
+
+    const returnTo = `${location.pathname}${location.search}`;
+    const { error } = await signInWithGoogle(returnTo);
     if (error) {
       setError(error.message);
     } else {

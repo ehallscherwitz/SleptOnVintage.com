@@ -7,6 +7,8 @@ import { giveawayService, type GiveawayEntry } from '../services/giveawayService
 import { GiveawayWheel } from '../components/GiveawayWheel';
 import { getPrimaryProductImageUrl, type Product } from '../services/productService';
 import { useAuth } from '../context/AuthContext';
+import { adminService } from '../services/adminService';
+import { isAdminEmail } from '../utils/adminAccess';
 import { confettiBurst } from '../utils/confetti';
 
 function nowMs(): number {
@@ -33,6 +35,7 @@ const GiveawayPage: React.FC = () => {
   const [entries, setEntries] = useState<GiveawayEntry[]>([]);
   const [entered, setEntered] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [canceling, setCanceling] = useState(false);
 
   const [timeLeftMs, setTimeLeftMs] = useState<number>(0);
   const [replaySpin, setReplaySpin] = useState(false);
@@ -191,13 +194,17 @@ const GiveawayPage: React.FC = () => {
     setErr(null);
     try {
       if (!user) {
-        const { error } = await signInWithGoogle();
+        const { error } = await signInWithGoogle('/giveaway');
         if (error) setErr(error.message || 'Sign-in failed');
         return;
       }
-      const { ok, error } = await giveawayService.enter(giveaway.id);
+      const { ok, alreadyEntered, error } = await giveawayService.enter(giveaway.id);
       if (!ok) {
-        setErr(error || 'Could not enter giveaway');
+        setErr(error || 'Could not enter the giveaway. Please try again.');
+        return;
+      }
+      if (alreadyEntered) {
+        setEntered(true);
         return;
       }
       await refresh();
@@ -207,6 +214,31 @@ const GiveawayPage: React.FC = () => {
   };
 
   const winnerName = giveaway?.winner_name || null;
+  const isAdmin = isAdminEmail(user?.email);
+  const canCancelGiveaway = Boolean(isAdmin && giveaway && !giveaway.resolved_at);
+
+  const cancelGiveaway = async () => {
+    const productId = giveaway?.product_id;
+    if (!Number.isFinite(productId)) return;
+    const ok = window.confirm('Cancel this giveaway? All entries will be deleted and the item returns to the shop.');
+    if (!ok) return;
+    setCanceling(true);
+    setErr(null);
+    try {
+      const { error } = await adminService.cancelGiveaway({ productId });
+      if (error) {
+        setErr(error);
+        return;
+      }
+      setReplaySpin(false);
+      setReplaySpinDone(false);
+      await refresh();
+    } catch (ex) {
+      setErr(ex instanceof Error ? ex.message : 'Cancel giveaway failed');
+    } finally {
+      setCanceling(false);
+    }
+  };
 
   return (
     <div className="giveaway-page">
@@ -251,6 +283,19 @@ const GiveawayPage: React.FC = () => {
                     Entrants: <strong>{entries.length}</strong>
                   </div>
                 </div>
+
+                {canCancelGiveaway && (
+                  <div className="giveaway-admin-actions">
+                    <button
+                      type="button"
+                      className="admin-btn-danger-solid"
+                      disabled={canceling || busy}
+                      onClick={() => void cancelGiveaway()}
+                    >
+                      {canceling ? 'Cancelling…' : 'Cancel giveaway'}
+                    </button>
+                  </div>
+                )}
 
                 {giveaway.resolved_at && (
                   <div className="giveaway-winner">

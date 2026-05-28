@@ -35,6 +35,27 @@ export type GiveawayEntry = {
   created_at: string;
 };
 
+function isDuplicateGiveawayEntry(error: { code?: string; message?: string; details?: string }): boolean {
+  if (error.code === '23505') return true;
+  const msg = `${error.message || ''} ${error.details || ''}`.toLowerCase();
+  return (
+    msg.includes('duplicate') ||
+    msg.includes('unique') ||
+    msg.includes('already exists') ||
+    msg.includes('giveaway_entries_giveaway_id_user_id')
+  );
+}
+
+function friendlyGiveawayEnterError(error: { code?: string; message?: string }): string {
+  if (isDuplicateGiveawayEntry(error)) return 'You have already entered.';
+  const msg = (error.message || '').toLowerCase();
+  if (msg.includes('not authenticated') || msg.includes('sign in')) return 'Sign in required.';
+  if (msg.includes('row-level security') || msg.includes('policy')) {
+    return 'Giveaway entry is closed or unavailable right now.';
+  }
+  return 'Could not enter the giveaway. Please try again.';
+}
+
 function safeNameFromUser(u: any): string {
   const raw =
     u?.user_metadata?.full_name ??
@@ -65,7 +86,9 @@ export const giveawayService = {
     return { entries: (data as GiveawayEntry[]) ?? [], error: null };
   },
 
-  async enter(giveawayId: string): Promise<{ ok: boolean; error: string | null }> {
+  async enter(
+    giveawayId: string
+  ): Promise<{ ok: boolean; alreadyEntered?: boolean; error: string | null }> {
     const {
       data: { user },
       error: userErr,
@@ -83,7 +106,12 @@ export const giveawayService = {
       email,
     });
 
-    if (error) return { ok: false, error: error.message };
+    if (error) {
+      if (isDuplicateGiveawayEntry(error)) {
+        return { ok: true, alreadyEntered: true, error: null };
+      }
+      return { ok: false, error: friendlyGiveawayEnterError(error) };
+    }
     return { ok: true, error: null };
   },
 
