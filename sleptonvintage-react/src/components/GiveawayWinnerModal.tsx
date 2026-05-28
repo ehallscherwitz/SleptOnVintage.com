@@ -2,8 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { giveawayService, type GiveawayOrderNeedingShipping } from '../services/giveawayService';
 import type { CustomerInfo, ShippingInfo } from '../services/checkoutService';
-import { confettiBurst } from '../utils/confetti';
-
 type Props = {
   order: GiveawayOrderNeedingShipping;
   defaultEmail?: string | null;
@@ -27,10 +25,6 @@ export const GiveawayWinnerModal: React.FC<Props> = ({ order, defaultEmail, onSu
   });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-
-  useEffect(() => {
-    confettiBurst();
-  }, [order.id]);
 
   useEffect(() => {
     if (defaultEmail) {

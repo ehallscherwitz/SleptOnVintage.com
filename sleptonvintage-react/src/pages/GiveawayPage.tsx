@@ -10,6 +10,7 @@ import { useAuth } from '../context/AuthContext';
 import { adminService } from '../services/adminService';
 import { isAdminEmail } from '../utils/adminAccess';
 import { confettiBurst } from '../utils/confetti';
+import { clearGiveawayRevealSeen, markGiveawayRevealSeen } from '../utils/giveawayReveal';
 
 function nowMs(): number {
   return Date.now();
@@ -53,10 +54,7 @@ const GiveawayPage: React.FC = () => {
     return match?.id ?? null;
   }, [giveaway, entries]);
 
-  const hasEnded = useMemo(() => {
-    if (!giveaway?.ends_at) return false;
-    return nowMs() >= new Date(giveaway.ends_at).getTime();
-  }, [giveaway]);
+  const hasEnded = Boolean(giveaway?.ends_at && timeLeftMs <= 0);
 
   const replayWindowOver = useMemo(() => {
     if (!giveaway?.ends_at) return true;
@@ -185,6 +183,7 @@ const GiveawayPage: React.FC = () => {
       setReplaySpinDone(false);
       return;
     }
+    if (giveaway?.id) clearGiveawayRevealSeen(giveaway.id);
     setReplaySpinDone(false);
     setReplaySpin(true);
   }, [giveaway?.id, giveaway?.resolved_at, inReplayWindow]);
@@ -193,7 +192,12 @@ const GiveawayPage: React.FC = () => {
     setReplaySpin(false);
     setReplaySpinDone(true);
     confettiBurst();
+    if (giveaway?.id) markGiveawayRevealSeen(giveaway.id);
   };
+
+  const showWinnerAnnouncement = Boolean(
+    giveaway?.resolved_at && (replaySpinDone || segments.length === 0)
+  );
 
   const wheelIdle = Boolean(giveaway && !giveaway.resolved_at && segments.length > 0);
 
@@ -304,11 +308,13 @@ const GiveawayPage: React.FC = () => {
                   </p>
                 ) : (
                   <p className="giveaway-countdown">
-                    {giveaway.resolved_at
+                    {showWinnerAnnouncement
                       ? 'Giveaway ended'
                       : resolving
                         ? 'Picking a winner…'
-                        : 'Giveaway ended — starting the draw…'}
+                        : giveaway.resolved_at
+                          ? 'Spinning to reveal the winner…'
+                          : 'Giveaway ended — starting the draw…'}
                   </p>
                 )}
 
@@ -346,7 +352,7 @@ const GiveawayPage: React.FC = () => {
                   </div>
                 )}
 
-                {giveaway.resolved_at && (
+                {showWinnerAnnouncement && (
                   <div className="giveaway-winner">
                     <div className="giveaway-winner-label">Winner</div>
                     <div className="giveaway-winner-name">{winnerName || 'No entries'}</div>
@@ -392,11 +398,6 @@ const GiveawayPage: React.FC = () => {
                 </>
               )}
 
-              {giveaway.resolved_at && replaySpinDone && (
-                <p className="giveaway-muted giveaway-replay-note">
-                  Replay window: this giveaway stays visible for 24 hours after it ends.
-                </p>
-              )}
             </section>
 
             {canManageGiveaway && entries.length > 0 && (

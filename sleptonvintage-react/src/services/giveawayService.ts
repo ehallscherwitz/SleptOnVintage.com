@@ -122,12 +122,16 @@ export const giveawayService = {
     return { data, error: null };
   },
 
-  async getOrderNeedingShipping(): Promise<{ order: GiveawayOrderNeedingShipping | null; error: string | null }> {
+  async getOrderNeedingShipping(): Promise<{
+    order: GiveawayOrderNeedingShipping | null;
+    giveawayId: string | null;
+    error: string | null;
+  }> {
     const {
       data: { user },
       error: userErr,
     } = await supabase.auth.getUser();
-    if (userErr || !user) return { order: null, error: null };
+    if (userErr || !user) return { order: null, giveawayId: null, error: null };
 
     const { data, error } = await supabase
       .from('orders')
@@ -139,13 +143,18 @@ export const giveawayService = {
       .limit(1)
       .maybeSingle();
 
-    if (error) return { order: null, error: error.message };
-    if (!data?.id) return { order: null, error: null };
+    if (error) return { order: null, giveawayId: null, error: error.message };
+    if (!data?.id) return { order: null, giveawayId: null, error: null };
 
     const items = (data as { order_items?: { name: string }[] }).order_items;
     const productName = items?.[0]?.name?.trim() || 'your giveaway prize';
+    const order = { id: data.id as string, productName };
 
-    return { order: { id: data.id as string, productName }, error: null };
+    const { giveaway } = await this.getActiveGiveawayPublic();
+    const giveawayId =
+      giveaway?.winner_order_id && giveaway.winner_order_id === order.id ? giveaway.id : null;
+
+    return { order, giveawayId, error: null };
   },
 
   async submitWinnerShipping(body: {
