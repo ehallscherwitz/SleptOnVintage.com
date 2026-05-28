@@ -8,7 +8,6 @@ import { productService, type Product } from '../services/productService';
 import { Seo } from '../components/Seo';
 import { SITE_SEO_KEYWORDS, SITE_TAGLINE, SITE_URL } from '../constants/site';
 import { SITE_NAME } from '../constants/legal';
-import { giveawayService } from '../services/giveawayService';
 
 const HOMEPAGE_VIDEO_BUCKET =
   (import.meta.env.VITE_HOMEPAGE_VIDEO_BUCKET as string | undefined)?.trim() || 'videos';
@@ -42,8 +41,6 @@ const Homepage: React.FC = () => {
   const [sampleByCategory, setSampleByCategory] = useState<
     Partial<Record<Product['category'], Product | null>>
   >({});
-  const [giveawayEndsAt, setGiveawayEndsAt] = useState<string | null>(null);
-  const [giveawayTimeLeft, setGiveawayTimeLeft] = useState<string | null>(null);
   const [heroVideoSrc, setHeroVideoSrc] = useState(() => publicHeroVideoUrl());
   const heroVideoRef = useRef<HTMLVideoElement>(null);
   const heroTriedSignedUrl = useRef(false);
@@ -67,41 +64,6 @@ const Homepage: React.FC = () => {
       cancelled = true;
     };
   }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const { giveaway } = await giveawayService.getActiveGiveawayPublic();
-      if (cancelled) return;
-      setGiveawayEndsAt(giveaway?.ends_at ?? null);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!giveawayEndsAt) {
-      setGiveawayTimeLeft(null);
-      return;
-    }
-    const tick = () => {
-      const left = new Date(giveawayEndsAt).getTime() - Date.now();
-      if (left <= 0) {
-        setGiveawayTimeLeft('Ending…');
-        return;
-      }
-      const s = Math.floor(left / 1000);
-      const h = Math.floor(s / 3600);
-      const m = Math.floor((s % 3600) / 60);
-      const sec = s % 60;
-      if (h > 0) setGiveawayTimeLeft(`${h}h ${m}m`);
-      else setGiveawayTimeLeft(`${m}m ${sec}s`);
-    };
-    tick();
-    const id = window.setInterval(tick, 1000);
-    return () => window.clearInterval(id);
-  }, [giveawayEndsAt]);
 
   useEffect(() => {
     const el = heroVideoRef.current;
@@ -193,12 +155,6 @@ const Homepage: React.FC = () => {
         })}
       </div>
       <div className="homepage-all-items-wrap">
-        <Link to="/giveaway" className="homepage-all-items-btn">
-          GIVEAWAY{giveawayTimeLeft ? ` · ${giveawayTimeLeft}` : ''}{' '}
-          <i className="fa-solid fa-arrow-right" aria-hidden="true" />
-        </Link>
-      </div>
-      <div className="homepage-all-items-wrap" style={{ marginTop: 12 }}>
         <Link to="/search" className="homepage-all-items-btn">
           ALL ITEMS <i className="fa-solid fa-arrow-right" aria-hidden="true" />
         </Link>

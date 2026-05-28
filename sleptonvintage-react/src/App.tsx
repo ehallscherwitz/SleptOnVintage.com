@@ -23,6 +23,7 @@ import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import TermsPage from './pages/TermsPage';
 import ContactPage from './pages/ContactPage';
 import Footer from './components/Footer';
+import { GiveawayWinnerPrompt } from './components/GiveawayWinnerPrompt';
 import { ScrollToTop } from './components/ScrollToTop';
 
 // Import styles (remove default Vite styles)
@@ -76,6 +77,7 @@ function App() {
             </div>
             <Footer />
           </div>
+          <GiveawayWinnerPrompt />
           <Analytics />
         </Router>
       </CartProvider>

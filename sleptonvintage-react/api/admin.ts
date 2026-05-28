@@ -699,13 +699,11 @@ async function handleCancelGiveaway(req: VercelRequest, res: VercelResponse, aut
   const productId = typeof idRaw === 'number' ? idRaw : typeof idRaw === 'string' ? parseInt(idRaw, 10) : NaN;
   if (!Number.isFinite(productId)) return res.status(400).json({ error: 'productId required' });
 
-  const nowIso = new Date().toISOString();
   const { data: active, error: findErr } = await auth.service
     .from('giveaways')
     .select('id, product_id, ends_at, resolved_at')
     .eq('product_id', productId)
     .is('resolved_at', null)
-    .gt('ends_at', nowIso)
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();

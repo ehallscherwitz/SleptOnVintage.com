@@ -1,5 +1,11 @@
 import { supabase } from '../lib/supabase';
+import type { CustomerInfo, ShippingInfo } from './checkoutService';
 import type { Product } from './productService';
+
+export type GiveawayOrderNeedingShipping = {
+  id: string;
+  productName: string;
+};
 
 export type GiveawayPublic = {
   id: string;
@@ -85,6 +91,46 @@ export const giveawayService = {
     const { data, error } = await supabase.rpc('resolve_giveaway', { p_giveaway_id: giveawayId });
     if (error) return { data: null, error: error.message };
     return { data, error: null };
+  },
+
+  async getOrderNeedingShipping(): Promise<{ order: GiveawayOrderNeedingShipping | null; error: string | null }> {
+    const {
+      data: { user },
+      error: userErr,
+    } = await supabase.auth.getUser();
+    if (userErr || !user) return { order: null, error: null };
+
+    const { data, error } = await supabase
+      .from('orders')
+      .select('id, shipping_address, order_items(name)')
+      .eq('user_id', user.id)
+      .eq('status', 'giveaway')
+      .is('shipping_address', null)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) return { order: null, error: error.message };
+    if (!data?.id) return { order: null, error: null };
+
+    const items = (data as { order_items?: { name: string }[] }).order_items;
+    const productName = items?.[0]?.name?.trim() || 'your giveaway prize';
+
+    return { order: { id: data.id as string, productName }, error: null };
+  },
+
+  async submitWinnerShipping(body: {
+    orderId: string;
+    customerInfo: CustomerInfo;
+    shippingInfo: ShippingInfo;
+  }): Promise<{ ok: boolean; error: string | null }> {
+    const { error } = await supabase.rpc('submit_giveaway_winner_shipping', {
+      p_order_id: body.orderId,
+      p_customer_info: body.customerInfo,
+      p_shipping_info: body.shippingInfo,
+    });
+    if (error) return { ok: false, error: error.message };
+    return { ok: true, error: null };
   },
 };
 

@@ -7,7 +7,7 @@ import { giveawayService, type GiveawayEntry } from '../services/giveawayService
 import { GiveawayWheel } from '../components/GiveawayWheel';
 import { getPrimaryProductImageUrl, type Product } from '../services/productService';
 import { useAuth } from '../context/AuthContext';
-import confetti from 'canvas-confetti';
+import { confettiBurst } from '../utils/confetti';
 
 function nowMs(): number {
   return Date.now();
@@ -22,33 +22,6 @@ function fmtTimeLeft(ms: number): string {
   if (days > 0) return `${days}d ${hours}h ${mins}m`;
   if (hours > 0) return `${hours}h ${mins}m ${secs}s`;
   return `${mins}m ${secs}s`;
-}
-
-function confettiBurst() {
-  try {
-    const end = Date.now() + 2500;
-    const colors = ['#ffffff', '#ffd166', '#ef476f', '#06d6a0', '#118ab2'];
-    const tick = () => {
-      confetti({
-        particleCount: 4,
-        angle: 60,
-        spread: 55,
-        origin: { x: 0 },
-        colors,
-      });
-      confetti({
-        particleCount: 4,
-        angle: 120,
-        spread: 55,
-        origin: { x: 1 },
-        colors,
-      });
-      if (Date.now() < end) requestAnimationFrame(tick);
-    };
-    tick();
-  } catch {
-    // ignore
-  }
 }
 
 function winnerSpinKey(giveawayId: string, resolvedAtIso: string | null): string {
@@ -247,8 +220,6 @@ const GiveawayPage: React.FC = () => {
       <Header />
       <PageHeadingRow title="Giveaway" fallbackTo="/" />
       <main className="giveaway-inner">
-        <h1 className="giveaway-title">Giveaway</h1>
-
         {loading ? (
           <p className="giveaway-muted">Loading…</p>
         ) : !giveaway ? (
