@@ -117,10 +117,16 @@
 
 .giveaway-wheel-section {
   margin-top: 18px;
-  padding: 18px;
+  padding: 10px 6px 14px;
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 14px;
   background: rgba(0, 0, 0, 0.2);
+}
+
+@media (min-width: 640px) {
+  .giveaway-wheel-section {
+    padding: 14px 12px 18px;
+  }
 }
 
 .giveaway-wheel-empty {
@@ -129,33 +135,45 @@
   color: rgba(255, 255, 255, 0.72);
 }
 
+.giveaway-wheel-status {
+  margin: 0 0 12px;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+}
+
 .giveaway-wheel-wrap {
   position: relative;
-  width: min(720px, 100%);
+  width: 100%;
+  max-width: 56rem;
   margin: 0 auto;
 }
 
 .giveaway-wheel-pointer {
   position: absolute;
-  top: 4px;
+  top: 2px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 3;
   width: 0;
   height: 0;
-  border-left: 14px solid transparent;
-  border-right: 14px solid transparent;
-  border-top: 26px solid #ffffff;
+  border-left: clamp(10px, 2.5vw, 16px) solid transparent;
+  border-right: clamp(10px, 2.5vw, 16px) solid transparent;
+  border-top: clamp(18px, 4vw, 28px) solid #ffffff;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.45));
 }
 
 .giveaway-wheel-host {
   width: 100%;
+  aspect-ratio: 1;
+  max-height: min(92dvh, 56rem);
+  margin: 0 auto;
 }
 
 .giveaway-wheel-host canvas {
   width: 100% !important;
-  height: auto !important;
+  height: 100% !important;
   display: block;
 }
 

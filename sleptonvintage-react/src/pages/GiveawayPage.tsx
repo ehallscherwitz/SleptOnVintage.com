@@ -41,6 +41,7 @@ const GiveawayPage: React.FC = () => {
   const [timeLeftMs, setTimeLeftMs] = useState<number>(0);
   const [replaySpin, setReplaySpin] = useState(false);
   const [replaySpinDone, setReplaySpinDone] = useState(false);
+  const [resolving, setResolving] = useState(false);
 
   const winnerId = useMemo(() => {
     if (!giveaway?.winner_email && !giveaway?.winner_name) return null;
@@ -136,18 +137,32 @@ const GiveawayPage: React.FC = () => {
     if (!giveaway?.id || replayWindowOver) return;
     if (!hasEnded || giveaway?.resolved_at) return;
 
-    // Giveaway ended but not resolved yet: repeatedly attempt to resolve until winner exists.
+    let cancelled = false;
+    const giveawayId = giveaway.id;
+
+    const tryResolve = async () => {
+      if (cancelled) return;
+      setResolving(true);
+      const { data, error } = await giveawayService.resolve(giveawayId);
+      if (cancelled) return;
+      if (error) {
+        setErr(error);
+        setResolving(false);
+        return;
+      }
+      if (data?.resolved) {
+        await refresh();
+        setResolving(false);
+      }
+    };
+
+    // Resolve immediately when the timer ends (and keep polling until it succeeds).
+    void tryResolve();
     window.clearInterval(pollTimerRef.current || undefined);
-    pollTimerRef.current = window.setInterval(() => {
-      void (async () => {
-        const { data, error } = await giveawayService.resolve(giveaway.id);
-        if (!error && data?.resolved) {
-          await refresh();
-        }
-      })();
-    }, 3000);
+    pollTimerRef.current = window.setInterval(() => void tryResolve(), 3000);
 
     return () => {
+      cancelled = true;
       window.clearInterval(pollTimerRef.current || undefined);
       pollTimerRef.current = null;
     };
@@ -289,7 +304,11 @@ const GiveawayPage: React.FC = () => {
                   </p>
                 ) : (
                   <p className="giveaway-countdown">
-                    Giveaway ended{giveaway.resolved_at ? '' : ' — resolving…'}
+                    {giveaway.resolved_at
+                      ? 'Giveaway ended'
+                      : resolving
+                        ? 'Picking a winner…'
+                        : 'Giveaway ended — starting the draw…'}
                   </p>
                 )}
 
@@ -348,15 +367,29 @@ const GiveawayPage: React.FC = () => {
 
             <section className="giveaway-wheel-section">
               {segments.length === 0 ? (
-                <div className="giveaway-wheel-empty">No entries yet — be the first.</div>
+                <div className="giveaway-wheel-empty">
+                  {giveaway.resolved_at ? 'No entries were recorded for this giveaway.' : 'No entries yet — be the first.'}
+                </div>
               ) : (
-                <GiveawayWheel
-                  segments={segments}
-                  selectedId={winnerId}
-                  idle={wheelIdle}
-                  spin={replaySpin}
-                  onSpinEnd={onSpinEnd}
-                />
+                <>
+                  {hasEnded && !giveaway.resolved_at && (
+                    <p className="giveaway-wheel-status" aria-live="polite">
+                      {resolving ? 'Picking a winner…' : 'Get ready — the wheel will spin to reveal the winner.'}
+                    </p>
+                  )}
+                  {giveaway.resolved_at && replaySpin && !replaySpinDone && (
+                    <p className="giveaway-wheel-status" aria-live="polite">
+                      Spinning to reveal the winner…
+                    </p>
+                  )}
+                  <GiveawayWheel
+                    segments={segments}
+                    selectedId={winnerId}
+                    idle={wheelIdle}
+                    spin={replaySpin}
+                    onSpinEnd={onSpinEnd}
+                  />
+                </>
               )}
 
               {giveaway.resolved_at && replaySpinDone && (

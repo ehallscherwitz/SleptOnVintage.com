@@ -142,8 +142,8 @@ select
 from public.giveaways g
 join public.products p on p.id = g.product_id
 where
-  g.resolved_at is null
-  and now() >= g.starts_at
+  -- Include unresolved giveaways and resolved ones in the 24h post-end replay window.
+  now() >= g.starts_at
   and now() <= g.ends_at + interval '24 hours';
 
 -- Resolve a giveaway exactly once after it ends.

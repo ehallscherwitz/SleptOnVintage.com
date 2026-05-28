@@ -6,9 +6,10 @@ export type GiveawayWheelSegment = {
   label: string;
 };
 
-/** Distinct slice colors (wheelofnames-style). */
 /** Degrees per second for slow continuous idle rotation. */
 const IDLE_SPIN_SPEED = 32;
+
+/** Distinct slice colors (wheelofnames-style). */
 
 const SLICE_COLORS = [
   '#2563eb',
@@ -24,6 +25,33 @@ const SLICE_COLORS = [
   '#b91c1c',
   '#65a30d',
 ];
+
+function wheelLabelForDisplay(label: string, entrantCount: number): string {
+  if (entrantCount <= 20) return label;
+  const maxLen = entrantCount <= 40 ? 16 : entrantCount <= 60 ? 12 : 9;
+  const trimmed = label.trim();
+  if (trimmed.length <= maxLen) return trimmed;
+  return `${trimmed.slice(0, maxLen - 1)}…`;
+}
+
+function wheelLabelStyle(entrantCount: number) {
+  if (entrantCount <= 8) {
+    return { itemLabelFontSizeMax: 28, itemLabelStrokeWidth: 3, lineWidth: 2, itemLabelRadiusMax: 0.42 };
+  }
+  if (entrantCount <= 16) {
+    return { itemLabelFontSizeMax: 24, itemLabelStrokeWidth: 2, lineWidth: 2, itemLabelRadiusMax: 0.44 };
+  }
+  if (entrantCount <= 30) {
+    return { itemLabelFontSizeMax: 18, itemLabelStrokeWidth: 2, lineWidth: 1.5, itemLabelRadiusMax: 0.48 };
+  }
+  if (entrantCount <= 50) {
+    return { itemLabelFontSizeMax: 13, itemLabelStrokeWidth: 1.5, lineWidth: 1, itemLabelRadiusMax: 0.52 };
+  }
+  if (entrantCount <= 70) {
+    return { itemLabelFontSizeMax: 10, itemLabelStrokeWidth: 1, lineWidth: 1, itemLabelRadiusMax: 0.56 };
+  }
+  return { itemLabelFontSizeMax: 7, itemLabelStrokeWidth: 1, lineWidth: 1, itemLabelRadiusMax: 0.6 };
+}
 
 type Props = {
   segments: GiveawayWheelSegment[];
@@ -63,33 +91,49 @@ export const GiveawayWheel: React.FC<Props> = ({ segments, selectedId, idle = fa
     host.innerHTML = '';
     spinStartedRef.current = false;
 
+    const entrantCount = items.length;
+    const labelStyle = wheelLabelStyle(entrantCount);
+
     const wheel = new Wheel(host, {
       items: items.map((it) => ({
-        label: it.label,
+        label: wheelLabelForDisplay(it.label, entrantCount),
         backgroundColor: it.backgroundColor,
       })),
       borderColor: '#ffffff',
-      borderWidth: 3,
+      borderWidth: entrantCount > 50 ? 2 : 3,
       lineColor: '#ffffff',
-      lineWidth: 2,
-      radius: 0.92,
+      lineWidth: labelStyle.lineWidth,
+      radius: 0.94,
       pointerAngle: 0,
       itemLabelFont: 'system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif',
-      itemLabelFontSizeMax: 28,
-      itemLabelRadius: 0.88,
-      itemLabelRadiusMax: 0.42,
+      itemLabelFontSizeMax: labelStyle.itemLabelFontSizeMax,
+      itemLabelRadius: 0.9,
+      itemLabelRadiusMax: labelStyle.itemLabelRadiusMax,
       itemLabelAlign: 'right',
       itemLabelRotation: 0,
       itemLabelColors: ['#ffffff'],
       itemLabelStrokeColor: '#000000',
-      itemLabelStrokeWidth: 3,
+      itemLabelStrokeWidth: labelStyle.itemLabelStrokeWidth,
       rotationResistance: 0,
       rotationSpeedMax: 400,
       isInteractive: false,
     });
 
     wheelRef.current = wheel;
+
+    const resizeWheel = () => {
+      try {
+        wheel.resize();
+      } catch {
+        /* ignore */
+      }
+    };
+    resizeWheel();
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(resizeWheel) : null;
+    ro?.observe(host);
+
     return () => {
+      ro?.disconnect();
       try {
         wheel.stop();
         wheelRef.current?.remove();
@@ -99,7 +143,7 @@ export const GiveawayWheel: React.FC<Props> = ({ segments, selectedId, idle = fa
       wheelRef.current = null;
       host.innerHTML = '';
     };
-  }, [segmentKey, items]);
+  }, [segmentKey, items.length]);
 
   useEffect(() => {
     const wheel = wheelRef.current;
