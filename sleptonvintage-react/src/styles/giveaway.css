@@ -44,6 +44,12 @@
   background: rgba(0, 0, 0, 0.2);
 }
 
+.giveaway-hero-right {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
 .giveaway-item-title {
   margin: 0 0 8px;
   font-size: 26px;
@@ -54,12 +60,18 @@
   font-size: 16px;
 }
 
-.giveaway-cta-row {
-  display: flex;
-  gap: 14px;
-  align-items: center;
-  flex-wrap: wrap;
+.giveaway-cta-stack {
   margin-top: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.giveaway-enter-bar {
+  width: 100%;
+}
+
+.giveaway-entrants-line {
+  font-size: 14px;
 }
 
 .giveaway-disclaimer {
@@ -91,11 +103,12 @@
 }
 
 .giveaway-item-image {
-  width: 100%;
+  width: min(360px, 100%);
   aspect-ratio: 1 / 1;
   object-fit: cover;
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.14);
+  display: block;
 }
 
 .giveaway-item-image--empty {

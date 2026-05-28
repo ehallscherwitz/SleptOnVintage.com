@@ -273,16 +273,16 @@ const GiveawayPage: React.FC = () => {
                   </p>
                 )}
 
-                <div className="giveaway-cta-row">
+                <div className="giveaway-cta-stack">
                   <button
                     type="button"
-                    className="checkout-btn-primary"
+                    className="checkout-btn-primary giveaway-enter-bar"
                     disabled={!canEnter || busy || entered}
                     onClick={() => void enter()}
                   >
                     {!user ? 'Sign in with Google to enter' : entered ? 'You’re entered' : busy ? 'Entering…' : 'Enter giveaway'}
                   </button>
-                  <div className="giveaway-muted">
+                  <div className="giveaway-muted giveaway-entrants-line">
                     Entrants: <strong>{entries.length}</strong>
                   </div>
                 </div>
