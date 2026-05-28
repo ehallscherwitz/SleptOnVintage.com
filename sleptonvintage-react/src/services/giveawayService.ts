@@ -29,10 +29,11 @@ export type GiveawayPublic = {
 export type GiveawayEntry = {
   id: string;
   giveaway_id: string;
-  user_id: string;
+  user_id: string | null;
   full_name: string;
   email: string;
   created_at: string;
+  is_test?: boolean;
 };
 
 function isDuplicateGiveawayEntry(error: { code?: string; message?: string; details?: string }): boolean {

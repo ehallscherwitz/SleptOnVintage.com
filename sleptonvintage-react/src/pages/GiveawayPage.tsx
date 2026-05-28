@@ -36,6 +36,7 @@ const GiveawayPage: React.FC = () => {
   const [entered, setEntered] = useState(false);
   const [busy, setBusy] = useState(false);
   const [canceling, setCanceling] = useState(false);
+  const [removingEntryId, setRemovingEntryId] = useState<string | null>(null);
 
   const [timeLeftMs, setTimeLeftMs] = useState<number>(0);
   const [replaySpin, setReplaySpin] = useState(false);
@@ -215,7 +216,29 @@ const GiveawayPage: React.FC = () => {
 
   const winnerName = giveaway?.winner_name || null;
   const isAdmin = isAdminEmail(user?.email);
-  const canCancelGiveaway = Boolean(isAdmin && giveaway && !giveaway.resolved_at);
+  const canManageGiveaway = Boolean(isAdmin && giveaway && !giveaway.resolved_at);
+
+  const removeEntrant = async (entry: GiveawayEntry) => {
+    const label = entry.full_name || entry.email;
+    const ok = window.confirm(`Remove "${label}" from this giveaway? They will be off the wheel and out of the draw.`);
+    if (!ok) return;
+    setRemovingEntryId(entry.id);
+    setErr(null);
+    try {
+      const { error } = await adminService.deleteGiveawayEntry({ entryId: entry.id });
+      if (error) {
+        setErr(error);
+        return;
+      }
+      setReplaySpin(false);
+      setReplaySpinDone(false);
+      await refresh();
+    } catch (ex) {
+      setErr(ex instanceof Error ? ex.message : 'Remove entrant failed');
+    } finally {
+      setRemovingEntryId(null);
+    }
+  };
 
   const cancelGiveaway = async () => {
     const productId = giveaway?.product_id;
@@ -284,12 +307,19 @@ const GiveawayPage: React.FC = () => {
                   </div>
                 </div>
 
-                {canCancelGiveaway && (
+                {!giveaway.resolved_at && (
+                  <p className="giveaway-disclaimer">
+                    One entry per person. Using multiple accounts to enter may result in disqualification from this
+                    giveaway and future giveaways.
+                  </p>
+                )}
+
+                {canManageGiveaway && (
                   <div className="giveaway-admin-actions">
                     <button
                       type="button"
                       className="admin-btn-danger-solid"
-                      disabled={canceling || busy}
+                      disabled={canceling || busy || Boolean(removingEntryId)}
                       onClick={() => void cancelGiveaway()}
                     >
                       {canceling ? 'Cancelling…' : 'Cancel giveaway'}
@@ -335,6 +365,34 @@ const GiveawayPage: React.FC = () => {
                 </p>
               )}
             </section>
+
+            {canManageGiveaway && entries.length > 0 && (
+              <section className="giveaway-names giveaway-admin-entrants" aria-label="Manage entrants">
+                <h3 className="giveaway-names-title">Manage entrants</h3>
+                <p className="giveaway-muted giveaway-admin-entrants-hint">
+                  Remove someone who entered more than once or should be disqualified. Only you see this list.
+                </p>
+                <ul className="giveaway-admin-entrant-list">
+                  {entries.map((entry) => (
+                    <li key={entry.id} className="giveaway-admin-entrant-row">
+                      <div className="giveaway-admin-entrant-meta">
+                        <span className="giveaway-admin-entrant-name">{entry.full_name}</span>
+                        <span className="giveaway-muted giveaway-admin-entrant-email">{entry.email}</span>
+                        {entry.is_test && <span className="giveaway-admin-entrant-badge">Test</span>}
+                      </div>
+                      <button
+                        type="button"
+                        className="admin-btn-small admin-btn-danger"
+                        disabled={Boolean(removingEntryId) || canceling || busy}
+                        onClick={() => void removeEntrant(entry)}
+                      >
+                        {removingEntryId === entry.id ? 'Removing…' : 'Remove'}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
           </>
         )}
       </main>

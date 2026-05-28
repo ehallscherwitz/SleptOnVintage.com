@@ -53,6 +53,8 @@ const AdminProductEditPage: React.FC = () => {
   const [imageCacheBust, setImageCacheBust] = useState<Record<string, number>>({});
   const [cropSession, setCropSession] = useState<CropSession | null>(null);
   const [giveawayDuration, setGiveawayDuration] = useState(24 * 60 * 60);
+  const [seedFakeEntrants, setSeedFakeEntrants] = useState(false);
+  const [seedFakeCount, setSeedFakeCount] = useState(12);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -399,9 +401,13 @@ const AdminProductEditPage: React.FC = () => {
       const { error: e } = await adminService.createGiveaway({
         productId,
         durationSeconds: giveawayDuration,
+        seedFakeCount: seedFakeEntrants ? seedFakeCount : 0,
       });
       if (e) setErr(e);
-      else setMsg('Giveaway created. View it at /giveaway.');
+      else {
+        const fakeNote = seedFakeEntrants ? ` (${seedFakeCount} fake entrants added.)` : '';
+        setMsg(`Giveaway created.${fakeNote} View it at /giveaway.`);
+      }
     } catch (ex) {
       setErr(ex instanceof Error ? ex.message : 'Create giveaway failed');
     } finally {
@@ -606,6 +612,40 @@ const AdminProductEditPage: React.FC = () => {
             <Link to="/giveaway" className="admin-btn-secondary" style={{ textDecoration: 'none' }}>
               Open giveaway page
             </Link>
+          </div>
+          <div className="admin-giveaway-test-row">
+            <label className="admin-label admin-giveaway-test-check">
+              <input
+                type="checkbox"
+                checked={seedFakeEntrants}
+                disabled={saving}
+                onChange={(e) => setSeedFakeEntrants(e.target.checked)}
+              />
+              Populate with fake entrants (testing)
+            </label>
+            {seedFakeEntrants && (
+              <>
+                <label className="admin-label" style={{ margin: 0 }}>
+                  Count
+                </label>
+                <select
+                  className="checkout-input"
+                  value={seedFakeCount}
+                  disabled={saving}
+                  onChange={(e) => setSeedFakeCount(parseInt(e.target.value, 10))}
+                  style={{ maxWidth: 120 }}
+                >
+                  {[6, 8, 12, 16, 20, 24, 30, 90].map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+                </select>
+              </>
+            )}
+            <p className="admin-hint admin-hint--flush">
+              Fake names fill the wheel only. They are not real accounts and cannot win a shippable order.
+            </p>
           </div>
         </section>
 

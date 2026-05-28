@@ -641,6 +641,65 @@ function asDurationSeconds(v: unknown): number | undefined {
   return n;
 }
 
+const FAKE_GIVEAWAY_NAMES = [
+  'Alex Rivers',
+  'Jordan Blake',
+  'Sam Torres',
+  'Riley Chen',
+  'Casey Morgan',
+  'Taylor Brooks',
+  'Morgan Lee',
+  'Jamie Fox',
+  'Quinn Hayes',
+  'Avery Dunn',
+  'Drew Patel',
+  'Skyler Nash',
+  'Reese Holt',
+  'Parker Cole',
+  'Blake Rivera',
+  'Emery Shaw',
+  'Finley Grant',
+  'Harper Wells',
+  'Jesse Kim',
+  'Kai Sullivan',
+  'Logan Price',
+  'Marley Quinn',
+  'Noah Pierce',
+  'Oakley Reed',
+];
+
+function parseSeedFakeCount(raw: unknown): number {
+  if (raw === undefined || raw === null || raw === false || raw === '') return 0;
+  const n = typeof raw === 'number' ? raw : parseInt(String(raw), 10);
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  return Math.min(90, Math.floor(n));
+}
+
+function fakeGiveawayEntryRows(giveawayId: string, count: number) {
+  const slug = giveawayId.replace(/-/g, '').slice(0, 12);
+  return Array.from({ length: count }, (_, i) => {
+    const base = FAKE_GIVEAWAY_NAMES[i % FAKE_GIVEAWAY_NAMES.length]!;
+    const suffix = i >= FAKE_GIVEAWAY_NAMES.length ? ` ${Math.floor(i / FAKE_GIVEAWAY_NAMES.length) + 1}` : '';
+    return {
+      giveaway_id: giveawayId,
+      user_id: null,
+      is_test: true,
+      full_name: `${base}${suffix}`,
+      email: `giveaway.test.${i + 1}.${slug}@example.invalid`,
+    };
+  });
+}
+
+async function seedGiveawayFakeEntries(
+  service: SupabaseClient,
+  giveawayId: string,
+  count: number
+): Promise<string | null> {
+  if (count <= 0) return null;
+  const { error } = await service.from('giveaway_entries').insert(fakeGiveawayEntryRows(giveawayId, count));
+  return error?.message ?? null;
+}
+
 async function handleCreateGiveaway(req: VercelRequest, res: VercelResponse, auth: AdminOk) {
   const body = parseBody(req);
   const idRaw = body.productId;
@@ -649,6 +708,8 @@ async function handleCreateGiveaway(req: VercelRequest, res: VercelResponse, aut
 
   const durationSeconds = asDurationSeconds(body.durationSeconds);
   if (!durationSeconds) return res.status(400).json({ error: 'durationSeconds required (integer seconds)' });
+
+  const seedFakeCount = parseSeedFakeCount(body.seedFakeCount);
 
   const MIN = 3 * 60; // 3 minutes (testing)
   const MAX = 60 * 60 * 24 * 7; // 1 week
@@ -690,7 +751,48 @@ async function handleCreateGiveaway(req: VercelRequest, res: VercelResponse, aut
     .maybeSingle();
 
   if (error) return res.status(500).json({ error: error.message });
-  return res.status(201).json({ giveaway: data });
+  if (!data?.id) return res.status(500).json({ error: 'Giveaway was not created.' });
+
+  if (seedFakeCount > 0) {
+    const seedErr = await seedGiveawayFakeEntries(auth.service, data.id as string, seedFakeCount);
+    if (seedErr) {
+      await auth.service.from('giveaways').delete().eq('id', data.id);
+      return res.status(500).json({
+        error: `Could not add fake entrants (${seedErr}). Run supabase-giveaway-test-entries.sql in Supabase if you have not already.`,
+      });
+    }
+  }
+
+  return res.status(201).json({ giveaway: data, seedFakeCount: seedFakeCount || undefined });
+}
+
+async function handleDeleteGiveawayEntry(req: VercelRequest, res: VercelResponse, auth: AdminOk) {
+  const body = parseBody(req);
+  const entryId = String(body.entryId ?? '').trim();
+  if (!entryId) return res.status(400).json({ error: 'entryId required' });
+
+  const { data: entry, error: findErr } = await auth.service
+    .from('giveaway_entries')
+    .select('id, giveaway_id, full_name, email')
+    .eq('id', entryId)
+    .maybeSingle();
+  if (findErr) return res.status(500).json({ error: findErr.message });
+  if (!entry?.id) return res.status(404).json({ error: 'Entry not found.' });
+
+  const { data: giveaway, error: gErr } = await auth.service
+    .from('giveaways')
+    .select('id, resolved_at')
+    .eq('id', entry.giveaway_id)
+    .maybeSingle();
+  if (gErr) return res.status(500).json({ error: gErr.message });
+  if (!giveaway?.id) return res.status(404).json({ error: 'Giveaway not found.' });
+  if (giveaway.resolved_at) {
+    return res.status(409).json({ error: 'Cannot remove entrants after the giveaway has been resolved.' });
+  }
+
+  const { error: delErr } = await auth.service.from('giveaway_entries').delete().eq('id', entryId);
+  if (delErr) return res.status(500).json({ error: delErr.message });
+  return res.status(200).json({ ok: true });
 }
 
 async function handleCancelGiveaway(req: VercelRequest, res: VercelResponse, auth: AdminOk) {
@@ -767,6 +869,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return handleCreateGiveaway(req, res, auth);
     case 'cancel-giveaway':
       return handleCancelGiveaway(req, res, auth);
+    case 'delete-giveaway-entry':
+      return handleDeleteGiveawayEntry(req, res, auth);
     default:
       return res.status(400).json({ error: 'Missing or unknown op in JSON body' });
   }

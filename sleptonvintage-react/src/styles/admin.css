@@ -280,6 +280,27 @@
   flex: 1 1 220px;
 }
 
+.admin-giveaway-test-row {
+  margin-top: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+}
+
+.admin-giveaway-test-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  cursor: pointer;
+}
+
+.admin-hint--flush {
+  margin: 0;
+  flex: 1 1 100%;
+}
+
 .admin-product-upload-row {
   display: flex;
   flex-wrap: wrap;

@@ -197,6 +197,62 @@
   box-shadow: 0 0 0 1px rgba(255, 209, 102, 0.2);
 }
 
+.giveaway-admin-entrants-hint {
+  margin: 0 0 12px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.giveaway-admin-entrant-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.giveaway-admin-entrant-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.giveaway-admin-entrant-meta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.giveaway-admin-entrant-name {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.giveaway-admin-entrant-email {
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.giveaway-admin-entrant-badge {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.8);
+  width: fit-content;
+}
+
 @media (max-width: 900px) {
   .giveaway-hero {
     grid-template-columns: 1fr;

@@ -307,6 +307,8 @@ export const adminService = {
   async createGiveaway(body: {
     productId: number;
     durationSeconds: number;
+    /** Admin-only: number of fake wheel names to seed (0 = none). */
+    seedFakeCount?: number;
   }): Promise<{ giveaway?: unknown; error?: string }> {
     try {
       const response = await fetch(ADMIN_API, {
@@ -334,6 +336,21 @@ export const adminService = {
       return { ok: true };
     } catch (e) {
       return { error: networkErrorHint(e) || 'Cancel giveaway failed' };
+    }
+  },
+
+  async deleteGiveawayEntry(body: { entryId: string }): Promise<{ ok?: boolean; error?: string }> {
+    try {
+      const response = await fetch(ADMIN_API, {
+        method: 'POST',
+        headers: await authHeaders(),
+        body: JSON.stringify({ op: 'delete-giveaway-entry', ...body }),
+      });
+      const data = await parseJson(response);
+      if (!response.ok) return { error: data?.error || `HTTP ${response.status}` };
+      return { ok: true };
+    } catch (e) {
+      return { error: networkErrorHint(e) || 'Remove entrant failed' };
     }
   },
 };
