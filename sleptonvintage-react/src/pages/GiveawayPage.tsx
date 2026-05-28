@@ -24,10 +24,6 @@ function fmtTimeLeft(ms: number): string {
   return `${mins}m ${secs}s`;
 }
 
-function winnerSpinKey(giveawayId: string, resolvedAtIso: string | null): string {
-  return `giveaway_spin_v1:${giveawayId}:${resolvedAtIso || 'unresolved'}`;
-}
-
 const GiveawayPage: React.FC = () => {
   const { user, signInWithGoogle } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -39,8 +35,8 @@ const GiveawayPage: React.FC = () => {
   const [busy, setBusy] = useState(false);
 
   const [timeLeftMs, setTimeLeftMs] = useState<number>(0);
-  const [spin, setSpin] = useState(false);
-  const [spinDone, setSpinDone] = useState(false);
+  const [replaySpin, setReplaySpin] = useState(false);
+  const [replaySpinDone, setReplaySpinDone] = useState(false);
 
   const winnerId = useMemo(() => {
     if (!giveaway?.winner_email && !giveaway?.winner_name) return null;
@@ -154,28 +150,33 @@ const GiveawayPage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [giveaway?.id, giveaway?.resolved_at, hasEnded, replayWindowOver]);
 
+  const segments = useMemo(() => {
+    return entries.map((e) => ({
+      id: e.id,
+      label: e.full_name,
+    }));
+  }, [entries]);
+
+  const inReplayWindow = Boolean(giveaway?.resolved_at && !replayWindowOver);
+
   useEffect(() => {
-    // When resolved, spin exactly once per resolved_at (per browser) and show confetti.
-    if (!giveaway?.id || !giveaway?.resolved_at) return;
-    const key = winnerSpinKey(giveaway.id, giveaway.resolved_at);
-    const already = localStorage.getItem(key) === 'done';
-    if (already) {
-      setSpinDone(true);
-      setSpin(false);
+    // Within 24h after end: replay the reveal spin on every visit (winner is already fixed in DB).
+    if (!inReplayWindow) {
+      setReplaySpin(false);
+      setReplaySpinDone(false);
       return;
     }
-    setSpin(true);
-  }, [giveaway?.id, giveaway?.resolved_at]);
+    setReplaySpinDone(false);
+    setReplaySpin(true);
+  }, [giveaway?.id, giveaway?.resolved_at, inReplayWindow]);
 
   const onSpinEnd = () => {
-    if (!giveaway?.id) return;
-    setSpin(false);
-    setSpinDone(true);
-    if (giveaway?.resolved_at) {
-      localStorage.setItem(winnerSpinKey(giveaway.id, giveaway.resolved_at), 'done');
-    }
+    setReplaySpin(false);
+    setReplaySpinDone(true);
     confettiBurst();
   };
+
+  const wheelIdle = Boolean(giveaway && !giveaway.resolved_at && segments.length > 0);
 
   const canEnter = useMemo(() => {
     if (!giveaway) return false;
@@ -204,13 +205,6 @@ const GiveawayPage: React.FC = () => {
       setBusy(false);
     }
   };
-
-  const segments = useMemo(() => {
-    return entries.map((e) => ({
-      id: e.id,
-      label: e.full_name,
-    }));
-  }, [entries]);
 
   const winnerName = giveaway?.winner_name || null;
 
@@ -284,12 +278,13 @@ const GiveawayPage: React.FC = () => {
                 <GiveawayWheel
                   segments={segments}
                   selectedId={winnerId}
-                  spin={spin && Boolean(giveaway.resolved_at)}
+                  idle={wheelIdle}
+                  spin={replaySpin}
                   onSpinEnd={onSpinEnd}
                 />
               )}
 
-              {giveaway.resolved_at && spinDone && (
+              {giveaway.resolved_at && replaySpinDone && (
                 <p className="giveaway-muted giveaway-replay-note">
                   Replay window: this giveaway stays visible for 24 hours after it ends.
                 </p>

@@ -123,9 +123,28 @@
   color: rgba(255, 255, 255, 0.72);
 }
 
-.giveaway-wheel-host {
+.giveaway-wheel-wrap {
+  position: relative;
   width: min(720px, 100%);
   margin: 0 auto;
+}
+
+.giveaway-wheel-pointer {
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  width: 0;
+  height: 0;
+  border-left: 14px solid transparent;
+  border-right: 14px solid transparent;
+  border-top: 26px solid #ffffff;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.45));
+}
+
+.giveaway-wheel-host {
+  width: 100%;
 }
 
 .giveaway-wheel-host canvas {
