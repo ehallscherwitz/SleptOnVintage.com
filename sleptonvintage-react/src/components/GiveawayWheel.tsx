@@ -70,6 +70,8 @@ export const GiveawayWheel: React.FC<Props> = ({ segments, selectedId, idle = fa
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const wheelRef = useRef<any>(null);
   const spinStartedRef = useRef(false);
+  const onSpinEndRef = useRef(onSpinEnd);
+  onSpinEndRef.current = onSpinEnd;
 
   const items = useMemo(() => {
     return (segments || []).map((s, idx) => ({
@@ -135,7 +137,6 @@ export const GiveawayWheel: React.FC<Props> = ({ segments, selectedId, idle = fa
 
     return () => {
       ro?.disconnect();
-      stopWheelSpinSound();
       try {
         wheel.stop();
         wheelRef.current?.remove();
@@ -153,7 +154,6 @@ export const GiveawayWheel: React.FC<Props> = ({ segments, selectedId, idle = fa
 
     if (spin) {
       wheel.stop();
-      stopWheelSpinSound();
       return;
     }
 
@@ -165,7 +165,9 @@ export const GiveawayWheel: React.FC<Props> = ({ segments, selectedId, idle = fa
     }
 
     wheel.stop();
-    stopWheelSpinSound();
+    if (!spinStartedRef.current) {
+      stopWheelSpinSound();
+    }
   }, [idle, spin, items.length, segmentKey]);
 
   useEffect(() => {
@@ -174,13 +176,13 @@ export const GiveawayWheel: React.FC<Props> = ({ segments, selectedId, idle = fa
     if (!wheel) return;
 
     if (!selectedId || items.length === 0) {
-      onSpinEnd?.();
+      onSpinEndRef.current?.();
       return;
     }
 
     const idx = items.findIndex((x) => x.id === selectedId);
     if (idx < 0) {
-      onSpinEnd?.();
+      onSpinEndRef.current?.();
       return;
     }
 
@@ -190,16 +192,15 @@ export const GiveawayWheel: React.FC<Props> = ({ segments, selectedId, idle = fa
 
     const handleRest = () => {
       wheel.onRest = null;
-      stopWheelSpinSound();
-      onSpinEnd?.();
+      stopWheelSpinSound(true);
+      onSpinEndRef.current?.();
     };
     wheel.onRest = handleRest;
 
     // Same duration + revolutions for every visitor → same visual “show”.
     wheel.spinToItem(idx, 7000, true, 6, 1);
-
-    return () => stopWheelSpinSound();
-  }, [spin, selectedId, items, onSpinEnd]);
+    // Audio stops only in handleRest — effect cleanup must not cut the bike SFX short.
+  }, [spin, selectedId, segmentKey, items.length]);
 
   return (
     <div className="giveaway-wheel-wrap">

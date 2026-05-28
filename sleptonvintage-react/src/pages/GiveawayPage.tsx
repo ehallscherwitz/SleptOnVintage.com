@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Header from '../components/Header';
 import { PageHeadingRow } from '../components/PageHeadingRow';
 import { Seo } from '../components/Seo';
@@ -14,6 +14,7 @@ import { clearGiveawayRevealSeen, markGiveawayRevealSeen } from '../utils/giveaw
 import {
   isGiveawayAudioUnlocked,
   preloadGiveawayAudio,
+  resetGiveawayAudioForGiveaway,
   startGiveawayAmbience,
   stopGiveawayAmbience,
   unlockGiveawayAudio,
@@ -144,15 +145,6 @@ const GiveawayPage: React.FC = () => {
   }, [loading, giveaway?.id]);
 
   useEffect(() => {
-    if (loading || !giveaway) {
-      stopGiveawayAmbience();
-      return;
-    }
-    startGiveawayAmbience();
-    return () => stopGiveawayAmbience();
-  }, [loading, giveaway?.id]);
-
-  useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
@@ -236,18 +228,44 @@ const GiveawayPage: React.FC = () => {
     setReplaySpin(true);
   }, [giveaway?.id, giveaway?.resolved_at, inReplayWindow]);
 
-  const onSpinEnd = () => {
+  const onSpinEnd = useCallback(() => {
     setReplaySpin(false);
     setReplaySpinDone(true);
     confettiBurst();
     if (giveaway?.id) markGiveawayRevealSeen(giveaway.id);
-  };
+  }, [giveaway?.id]);
 
   const showWinnerAnnouncement = Boolean(
     giveaway?.resolved_at && (replaySpinDone || segments.length === 0)
   );
 
   const wheelIdle = Boolean(giveaway && !giveaway.resolved_at && segments.length > 0);
+
+  /** Monkeys loop only while waiting — never during/after reveal spin. */
+  const shouldPlayWaitingMusic = Boolean(
+    giveaway && wheelIdle && !replaySpin && !replaySpinDone && segments.length > 0
+  );
+
+  useEffect(() => {
+    if (giveaway?.id) resetGiveawayAudioForGiveaway(giveaway.id);
+  }, [giveaway?.id]);
+
+  useEffect(() => {
+    if (loading || !giveaway) {
+      stopGiveawayAmbience();
+      return;
+    }
+    if (shouldPlayWaitingMusic) {
+      startGiveawayAmbience();
+    } else {
+      stopGiveawayAmbience();
+    }
+    return () => stopGiveawayAmbience();
+  }, [loading, giveaway?.id, shouldPlayWaitingMusic]);
+
+  useEffect(() => {
+    if (replaySpin) stopGiveawayAmbience();
+  }, [replaySpin]);
 
   const canEnter = useMemo(() => {
     if (!giveaway) return false;

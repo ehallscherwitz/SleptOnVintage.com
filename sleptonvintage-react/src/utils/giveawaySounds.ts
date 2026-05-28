@@ -1,10 +1,10 @@
-/** Giveaway page audio: ambience + wheel reveal SFX + win fanfare (Web Audio). */
+/** Giveaway page audio: waiting music, reveal wheel SFX, win fanfare. */
 
 const AMBIENCE_SRC = '/audio/monkeys-spinning-monkeys.mp3';
 const WHEEL_SPIN_SRC = '/audio/mixkit-bike-wheel-spinning-1613.wav';
 
-const AMBIENCE_VOLUME = 0.32;
-const AMBIENCE_DUCKED_VOLUME = 0.1;
+/** Low volume while waiting for the reveal spin. */
+const WAITING_MUSIC_VOLUME = 0.18;
 const WHEEL_REVEAL_VOLUME = 0.75;
 
 let sharedCtx: AudioContext | null = null;
@@ -15,8 +15,10 @@ let wheelBufferPromise: Promise<AudioBuffer | null> | null = null;
 let wheelSource: AudioBufferSourceNode | null = null;
 let wheelGain: GainNode | null = null;
 let audioUnlocked = false;
-let wantAmbience = false;
+let wantWaitingMusic = false;
 let wheelRevealActive = false;
+let revealFinished = false;
+let lastGiveawayId: string | null = null;
 
 function getCtx(): AudioContext | null {
   if (typeof window === 'undefined') return null;
@@ -116,7 +118,14 @@ function startWheelWebAudio(): boolean {
 export function preloadGiveawayAudio(): void {
   getAmbienceEl().load();
   getWheelEl().load();
-  if (audioUnlocked) void loadWheelBuffer();
+  void loadWheelBuffer();
+}
+
+/** Allow waiting music again when the active giveaway changes. */
+export function resetGiveawayAudioForGiveaway(giveawayId: string): void {
+  if (lastGiveawayId === giveawayId) return;
+  lastGiveawayId = giveawayId;
+  revealFinished = false;
 }
 
 function playWhenReady(audio: HTMLAudioElement): void {
@@ -145,27 +154,25 @@ function playWhenReady(audio: HTMLAudioElement): void {
 }
 
 function startWheelRevealPlayback(): void {
-  if (startWheelWebAudio()) return;
-
   const w = getWheelEl();
   w.volume = WHEEL_REVEAL_VOLUME;
   playWhenReady(w);
 
   void loadWheelBuffer().then((buf) => {
     if (!buf || !wheelRevealActive) return;
-    w.pause();
-    startWheelWebAudio();
+    if (startWheelWebAudio()) {
+      w.pause();
+    }
   });
 }
 
-/** Retry ambience + reveal wheel SFX in the same user-gesture turn (required on iOS). */
 function retryActiveAudioSync(): void {
   resumeCtx();
   void loadWheelBuffer();
 
-  if (wantAmbience) {
+  if (wantWaitingMusic && !revealFinished && !wheelRevealActive) {
     const a = getAmbienceEl();
-    a.volume = AMBIENCE_VOLUME;
+    a.volume = WAITING_MUSIC_VOLUME;
     playWhenReady(a);
   }
 
@@ -174,7 +181,7 @@ function retryActiveAudioSync(): void {
   }
 }
 
-/** Call after user gesture so timer-end spin and ambience can play. */
+/** Call after user gesture so reveal spin audio can play. */
 export function unlockGiveawayAudio(): void {
   audioUnlocked = true;
   retryActiveAudioSync();
@@ -184,31 +191,26 @@ export function isGiveawayAudioUnlocked(): boolean {
   return audioUnlocked;
 }
 
-/** Background loop on the giveaway page (/giveaway). */
+/** Waiting-room loop only (slow idle wheel, before reveal spin). */
 export function startGiveawayAmbience(): void {
-  wantAmbience = true;
+  if (revealFinished || wheelRevealActive) return;
+  wantWaitingMusic = true;
   const a = getAmbienceEl();
-  a.volume = AMBIENCE_VOLUME;
+  a.volume = WAITING_MUSIC_VOLUME;
   playWhenReady(a);
 }
 
 export function stopGiveawayAmbience(): void {
-  wantAmbience = false;
+  wantWaitingMusic = false;
   ambienceEl?.pause();
+  if (ambienceEl) ambienceEl.currentTime = 0;
 }
 
-function duckAmbience(): void {
-  if (ambienceEl && wantAmbience) ambienceEl.volume = AMBIENCE_DUCKED_VOLUME;
-}
-
-function restoreAmbienceVolume(): void {
-  if (ambienceEl && wantAmbience) ambienceEl.volume = AMBIENCE_VOLUME;
-}
-
-/** Bike-wheel SFX during the winner reveal spin only (not slow idle rotation). */
+/** Bike-wheel SFX during the winner reveal spin (music must be off). */
 export function startWheelSpinSound(): void {
   wheelRevealActive = true;
-  duckAmbience();
+  wantWaitingMusic = false;
+  stopGiveawayAmbience();
 
   wheelEl?.pause();
   if (wheelEl) wheelEl.currentTime = 0;
@@ -219,12 +221,18 @@ export function startWheelSpinSound(): void {
   }
 }
 
-export function stopWheelSpinSound(): void {
+/** End reveal spin; optional trumpet exactly when the wheel stops. */
+export function stopWheelSpinSound(playTrumpet = false): void {
   wheelRevealActive = false;
   stopWheelWebAudio();
   wheelEl?.pause();
   if (wheelEl) wheelEl.currentTime = 0;
-  restoreAmbienceVolume();
+  stopGiveawayAmbience();
+
+  if (playTrumpet) {
+    revealFinished = true;
+    playWinTrumpet();
+  }
 }
 
 /** Short brass-style fanfare when confetti runs (synthesized). */
