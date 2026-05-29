@@ -9,6 +9,7 @@
     "build": "tsc -b && node scripts/generate-sitemap.mjs && node scripts/generate-pinterest-catalog.mjs && vite build",
     "sitemap": "node scripts/generate-sitemap.mjs",
     "pinterest-catalog": "node scripts/generate-pinterest-catalog.mjs",
+    "convert-heic": "node scripts/convert-storage-heic-to-webp.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
     "prisma": "prisma",
@@ -38,7 +39,9 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^16.3.0",
+    "heic-convert": "^2.1.0",
     "prisma": "^6.19.3",
+    "sharp": "^0.34.5",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.39.1",
     "vite": "^7.1.2"

@@ -75,6 +75,12 @@ const SearchPage: React.FC = () => {
           return a.price - b.price;
         case 'price-desc':
           return b.price - a.price;
+        case 'recently-listed': {
+          const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
+          const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
+          if (bTime !== aTime) return bTime - aTime;
+          return b.id - a.id;
+        }
         default:
           return 0;
       }
@@ -99,6 +105,7 @@ const SearchPage: React.FC = () => {
   ];
 
   const sortOptions = [
+    { value: 'recently-listed', label: 'Recently Listed' },
     { value: 'name-asc', label: 'Name A-Z' },
     { value: 'name-desc', label: 'Name Z-A' },
     { value: 'price-asc', label: 'Price Low to High' },
