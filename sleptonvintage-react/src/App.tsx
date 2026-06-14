@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { CartProvider } from './context/CartContext';
 import { AuthProvider } from './context/AuthContext';
 import { Analytics } from '@vercel/analytics/react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 
 // Import pages
 import Homepage from './pages/Homepage';
@@ -81,6 +82,7 @@ function App() {
           </div>
           <GiveawayWinnerPrompt />
           <Analytics />
+          <SpeedInsights />
         </Router>
       </CartProvider>
     </AuthProvider>
