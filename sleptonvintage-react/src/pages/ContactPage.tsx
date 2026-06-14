@@ -2,8 +2,6 @@ import React from 'react';
 import { LegalDocument } from '../components/LegalDocument';
 import {
   CONTACT_EMAIL,
-  CONTACT_PHONE_DISPLAY,
-  CONTACT_PHONE_TEL,
   INSTAGRAM_URL,
   SITE_NAME,
 } from '../constants/legal';
@@ -20,11 +18,6 @@ const ContactPage: React.FC = () => {
           <strong>Email</strong>
           <br />
           <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
-        </li>
-        <li>
-          <strong>Phone</strong>
-          <br />
-          <a href={`tel:${CONTACT_PHONE_TEL}`}>{CONTACT_PHONE_DISPLAY}</a>
         </li>
         <li>
           <strong>Instagram</strong>

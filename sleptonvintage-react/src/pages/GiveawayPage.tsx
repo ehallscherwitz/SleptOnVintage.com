@@ -356,18 +356,6 @@ const GiveawayPage: React.FC = () => {
       <Header />
       <PageHeadingRow title="Giveaway" fallbackTo="/" />
       <main className="giveaway-inner">
-        {audioNeedsTap && !loading && giveaway && (
-          <button
-            type="button"
-            className="giveaway-audio-hint"
-            onClick={() => {
-              unlockGiveawayAudio();
-              setAudioNeedsTap(false);
-            }}
-          >
-            Tap to enable sound
-          </button>
-        )}
         {loading ? (
           <p className="giveaway-muted">Loading…</p>
         ) : !giveaway ? (

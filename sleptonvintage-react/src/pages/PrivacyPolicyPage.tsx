@@ -2,8 +2,6 @@ import React from 'react';
 import { LegalDocument } from '../components/LegalDocument';
 import {
   CONTACT_EMAIL,
-  CONTACT_PHONE_DISPLAY,
-  CONTACT_PHONE_TEL,
   INSTAGRAM_URL,
   POLICY_EFFECTIVE_DATE,
   SITE_DOMAIN,
@@ -62,8 +60,6 @@ const PrivacyPolicyPage: React.FC = () => {
       <h2>Contact</h2>
       <p>
         <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
-        {' · '}
-        <a href={`tel:${CONTACT_PHONE_TEL}`}>{CONTACT_PHONE_DISPLAY}</a>
         {' · '}
         <a href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer">
           Instagram
