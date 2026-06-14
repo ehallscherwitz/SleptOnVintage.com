@@ -1,7 +1,7 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-import { getSquareClient, toNumberAmount } from '../../server/squareClient';
-import { refundSquarePayment } from '../../server/squareRefund';
+import { getSquareClient, toNumberAmount } from '../../server/squareClient.js';
+import { refundSquarePayment } from '../../server/squareRefund.js';
 import { schedulePinterestSyncProductIds } from '../../server/pinterestSync.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {

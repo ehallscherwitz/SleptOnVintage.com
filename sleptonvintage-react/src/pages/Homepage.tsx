@@ -148,6 +148,26 @@ const Homepage: React.FC = () => {
       />
       <h1 className="visually-hidden">{SITE_NAME} — vintage thrift clothing online</h1>
       <Header />
+      <section className="homepage-promo" aria-label="Featured drop">
+        <Link to="/love" className="homepage-promo-images">
+          <img
+            className="homepage-promo-img"
+            src="/photos/IMG_0391.JPG"
+            alt="Courtney Love screenprint shirt designed by @jajin_ronin"
+            loading="eager"
+          />
+          <img
+            className="homepage-promo-img"
+            src="/photos/IMG_0379.JPG"
+            alt="Courtney Love screenprint shirt designed by @jajin_ronin"
+            loading="eager"
+          />
+          <p className="homepage-promo-text">
+            Courtney Love Shirt: Available Now{' '}
+            <i className="fa-solid fa-arrow-right" aria-hidden="true"></i>
+          </p>
+        </Link>
+      </section>
       <div className="homepage-hero-video-wrap">
         <video
           key={heroVideoSrc}

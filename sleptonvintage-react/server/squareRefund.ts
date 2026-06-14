@@ -1,4 +1,4 @@
-import { getSquareClient, toNumberAmount } from './squareClient';
+import { getSquareClient, toNumberAmount } from './squareClient.js';
 
 export type RefundPaymentResult =
   | { ok: true; refundId?: string }

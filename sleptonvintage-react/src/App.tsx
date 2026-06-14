@@ -19,6 +19,7 @@ import AdminProductsPage from './pages/AdminProductsPage';
 import AdminProductEditPage from './pages/AdminProductEditPage';
 import AdminNewListingPage from './pages/AdminNewListingPage';
 import GiveawayPage from './pages/GiveawayPage';
+import LovePage from './pages/LovePage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import TermsPage from './pages/TermsPage';
 import ContactPage from './pages/ContactPage';
@@ -69,6 +70,7 @@ function App() {
                 <Route path="/admin/products/new" element={<AdminNewListingPage />} />
                 <Route path="/admin/products/:id" element={<AdminProductEditPage />} />
                 <Route path="/giveaway" element={<GiveawayPage />} />
+                <Route path="/love" element={<LovePage />} />
                 <Route path="/auth/callback" element={<AuthCallback />} />
                 <Route path="/privacy" element={<PrivacyPolicyPage />} />
                 <Route path="/terms" element={<TermsPage />} />
